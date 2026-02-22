@@ -1,0 +1,7 @@
+# Bảo vệ thông tin nhạy cảm
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
+.env
+venv/
+.venv/
