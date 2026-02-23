@@ -338,6 +338,8 @@ if st.session_state.cp_farm:
             textposition="inside", textfont=dict(color="#fff", size=10)
         ))
         fig_fd.update_layout(showlegend=False, xaxis_tickformat=",.0f",
+                             yaxis=dict(automargin=True),
+                             margin=dict(t=44, b=48, l=120, r=8),
                              title=dict(text=f"Top đội trong {active_f}",
                                         font=dict(size=12, color=TM)))
         apply_plotly_style(fig_fd, 280)
@@ -475,6 +477,8 @@ if st.session_state.cp_lo:
             hovertemplate="<b>%{y}</b><br>%{x:,.0f} VND<extra></extra>",
         ))
         fig_locd.update_layout(showlegend=False, xaxis_tickformat=",.0f",
+                               yaxis=dict(automargin=True),
+                               margin=dict(t=44, b=48, l=140, r=8),
                                title=dict(text=f"Công đoạn trong Lô {active_lo_name}",
                                           font=dict(size=12, color=TM)))
         apply_plotly_style(fig_locd, 280)
@@ -514,10 +518,18 @@ fig_doi.add_bar(
     opacity=0.7,
     hovertemplate="<b>%{y}</b> — Hỗ trợ<br>%{x:,.0f} VND<extra></extra>",
 )
-fig_doi.update_layout(barmode="stack", xaxis_tickformat=",.0f",
-                      title=dict(text="Chi phí Công theo Đội — Chính chủ / Hỗ trợ",
-                                 font=dict(size=12, color=TM)))
-apply_plotly_style(fig_doi, 400)
+# Tính left margin dựa vào tên dài nhất trong pv["doi_code"]
+_max_label_len = max(len(str(d)) for d in pv["doi_code"]) if not pv.empty else 8
+_l_margin = max(80, _max_label_len * 7)  # ~7px/ký tự
+
+fig_doi.update_layout(
+    barmode="stack", xaxis_tickformat=",.0f",
+    title=dict(text="Chi phí Công theo Đội — Chính chủ / Hỗ trợ",
+               font=dict(size=12, color=TM)),
+    yaxis=dict(automargin=True),
+    margin=dict(t=44, b=48, l=_l_margin, r=8),
+)
+apply_plotly_style(fig_doi, max(400, len(pv) * 26))
 ev_doi = st.plotly_chart(fig_doi, use_container_width=True, key="doi_bar",
                          on_select="rerun", selection_mode="points")
 if ev_doi and ev_doi.selection and ev_doi.selection.get("points"):

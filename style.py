@@ -39,8 +39,8 @@ PLOTLY_LAYOUT = dict(
                linecolor=C["border"], tickfont=dict(color=C["text_muted"], size=11)),
     hoverlabel=dict(bgcolor=C["surface2"], bordercolor=C["border2"],
                     font=dict(color=C["text"], size=12)),
-    margin=dict(t=56, b=24, l=8, r=8),
-    legend=dict(orientation="h", y=1.16, x=0, bgcolor="rgba(0,0,0,0)",
+    margin=dict(t=44, b=48, l=8, r=8),
+    legend=dict(orientation="h", y=-0.12, x=0, bgcolor="rgba(0,0,0,0)",
                 borderwidth=0, font=dict(color=C["text_sub"], size=11)),
     colorway=[C["green"], C["amber"], C["blue"], C["purple"], C["red"], "#79C0FF"],
 )

@@ -242,9 +242,12 @@ with col1:
     ))
     fig_d.add_vline(x=100, line_dash="dash", line_color=C["border2"])
     fig_d.add_vline(x=80, line_dash="dot", line_color=C["blue"])
+    _l_d = max(80, max(len(str(d)) for d in bd["doi_code"]) * 7) if not bd.empty else 80
     fig_d.update_layout(xaxis_ticksuffix="%", xaxis_range=[0, max(bd["trung_binh"].max()*1.25, 125)],
+                        yaxis=dict(automargin=True),
+                        margin=dict(t=44, b=48, l=_l_d, r=8),
                         title=dict(text="Theo Đội", font=dict(size=12, color=C["text_muted"])))
-    apply_plotly_style(fig_d, 400)
+    apply_plotly_style(fig_d, max(400, len(bd) * 26))
     ev_d = st.plotly_chart(fig_d, use_container_width=True, key="chart_d",
                            on_select="rerun", selection_mode="points")
     if ev_d and ev_d.selection and ev_d.selection.get("points"):
@@ -274,10 +277,13 @@ with col2:
     ))
     fig_l.add_vline(x=100, line_dash="dash", line_color=C["border2"])
     fig_l.add_vline(x=80, line_dash="dot", line_color=C["blue"])
+    _l_l = max(80, max(len(str(l)) for l in bl["label"]) * 7) if not bl.empty else 80
     fig_l.update_layout(xaxis_ticksuffix="%", xaxis_range=[0, max(bl["trung_binh"].max()*1.25, 125)],
+                        yaxis=dict(automargin=True),
+                        margin=dict(t=44, b=48, l=_l_l, r=8),
                         title=dict(text="Theo Lô (click để drill)",
                                    font=dict(size=12, color=C["text_muted"])))
-    apply_plotly_style(fig_l, max(400, len(bl)*20))
+    apply_plotly_style(fig_l, max(400, len(bl)*26))
     ev_l = st.plotly_chart(fig_l, use_container_width=True, key="chart_l",
                            on_select="rerun", selection_mode="points")
     if ev_l and ev_l.selection and ev_l.selection.get("points"):
