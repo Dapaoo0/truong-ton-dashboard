@@ -690,72 +690,153 @@ def _drill_label(include_doi=True):
 
 TOP_N = 20
 
-col1, col2 = st.columns(2)
+# ════════════════════════════════════════════
+# BẢNG CÔNG VIỆC — sort đúng (số), có filter
+# ════════════════════════════════════════════
+lbl_cv = _drill_label(include_doi=True)
+tip(f"Công việc chi tiết theo Lô — {lbl_cv}")
 
-# ══════════════════════════════════════════
-# CỘT TRÁI: Bảng Top công việc (dc → đội + lô + farm)
-# ══════════════════════════════════════════
-with col1:
-    lbl_cv = _drill_label(include_doi=True)
-    tip(f"Công việc — {lbl_cv}")
-    if not dc.empty and "ten_cong_viec" in dc.columns:
-        cv_grp = (dc.groupby(["ten_cong_viec", "cong_doan"])["thanh_tien"]
-                  .sum().reset_index())
-        cv_grp["thanh_tien"] = pd.to_numeric(cv_grp["thanh_tien"], errors="coerce").fillna(0)
-        cv_top = (cv_grp[cv_grp["thanh_tien"] > 0]
-                  .nlargest(TOP_N, "thanh_tien")
-                  .reset_index(drop=True))
-        cv_top["Xếp hạng"] = cv_top["thanh_tien"].rank(ascending=False).astype(int)
-        cv_top["% tổng Công"] = (cv_top["thanh_tien"] /
-                                  dc["thanh_tien"].sum() * 100).round(1)
-        disp_cv = pd.DataFrame({
-            "#":             cv_top["Xếp hạng"],
-            "Công việc":     cv_top["ten_cong_viec"],
-            "Hạng mục":      cv_top["cong_doan"],
-            "Chi phí (VND)": cv_top["thanh_tien"].apply(format_vnd),
-            "% tổng":        cv_top["% tổng Công"].apply(lambda x: f"{x:.1f}%"),
-            "_sort":         cv_top["thanh_tien"],
-        })
-        # Giữ cột _sort ẩn để sort đúng (st.dataframe sort theo giá trị hiển thị)
-        # Streamlit sort cột string theo alphabet → dùng số nguyên gốc
-        disp_cv = disp_cv.sort_values("_sort", ascending=False).drop(columns=["_sort"])
-        st.dataframe(disp_cv, use_container_width=True, hide_index=True)
-    else:
-        st.info("Không có dữ liệu công việc.")
+if not dc.empty and "ten_cong_viec" in dc.columns:
+    cv_grp = (dc.groupby(["farm_code", "doi_code", "lo_code",
+                           "cong_doan", "ten_cong_viec"])["thanh_tien"]
+               .sum().reset_index())
+    cv_grp["thanh_tien"] = pd.to_numeric(cv_grp["thanh_tien"], errors="coerce").fillna(0)
+    cv_all = cv_grp[cv_grp["thanh_tien"] > 0].copy()
+    total_c = dc["thanh_tien"].sum()
+    cv_all["pct"] = (cv_all["thanh_tien"] / total_c * 100).round(2) if total_c else 0.0
+    cv_all = cv_all.sort_values("thanh_tien", ascending=False).reset_index(drop=True)
 
-# ══════════════════════════════════════════
-# CỘT PHẢI: Bảng Top vật tư (dv → farm + lô, KHÔNG có đội)
-# ══════════════════════════════════════════
-with col2:
-    lbl_vt = _drill_label(include_doi=False)
-    doi_note = ""
-    if st.session_state.cp_doi:
-        los_of_doi = _doi_to_los.get(st.session_state.cp_doi, set())
-        if los_of_doi:
-            doi_note = f" · qua {len(los_of_doi)} lô thuộc đội này"
-        else:
-            doi_note = " · đội này không có lô nào trong dim_lo_doi"
-    tip(f"Vật tư — {lbl_vt}{doi_note}")
-    if not dv.empty and "ten_vat_tu" in dv.columns:
-        vt_grp = (dv.groupby(["ten_vat_tu", "loai_vat_tu"])["thanh_tien"]
-                  .sum().reset_index())
-        vt_grp["thanh_tien"] = pd.to_numeric(vt_grp["thanh_tien"], errors="coerce").fillna(0)
-        vt_top = (vt_grp[vt_grp["thanh_tien"] > 0]
-                  .nlargest(TOP_N, "thanh_tien")
-                  .reset_index(drop=True))
-        vt_top["Xếp hạng"] = vt_top["thanh_tien"].rank(ascending=False).astype(int)
-        vt_top["% tổng VT"] = (vt_top["thanh_tien"] /
-                                 dv["thanh_tien"].sum() * 100).round(1)
-        disp_vt = pd.DataFrame({
-            "#":             vt_top["Xếp hạng"],
-            "Tên vật tư":    vt_top["ten_vat_tu"],
-            "Loại":          vt_top["loai_vat_tu"],
-            "Chi phí (VND)": vt_top["thanh_tien"].apply(format_vnd),
-            "% tổng":        vt_top["% tổng VT"].apply(lambda x: f"{x:.1f}%"),
-        })
-        st.dataframe(disp_vt, use_container_width=True, hide_index=True)
-    else:
-        st.info("Không có dữ liệu vật tư.")
+    # ── Filter widgets ──────────────────────
+    with st.expander("🔽 Lọc bảng Công việc", expanded=False):
+        fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 3])
+        with fc1:
+            f_farm_cv = st.multiselect("Farm", sorted(cv_all["farm_code"].unique()),
+                                       default=[], key="flt_farm_cv",
+                                       placeholder="Tất cả")
+        with fc2:
+            f_doi_cv = st.multiselect("Đội", sorted(cv_all["doi_code"].unique()),
+                                      default=[], key="flt_doi_cv",
+                                      placeholder="Tất cả")
+        with fc3:
+            f_lo_cv = st.multiselect("Lô", sorted(cv_all["lo_code"].unique()),
+                                     default=[], key="flt_lo_cv",
+                                     placeholder="Tất cả")
+        with fc4:
+            f_hm_cv = st.multiselect("Hạng mục", sorted(cv_all["cong_doan"].unique()),
+                                     default=[], key="flt_hm_cv",
+                                     placeholder="Tất cả")
+        f_search_cv = st.text_input("Tìm tên công việc", key="flt_search_cv",
+                                    placeholder="Nhập từ khoá...")
+
+    # Áp dụng filter
+    cv_f = cv_all.copy()
+    if f_farm_cv: cv_f = cv_f[cv_f["farm_code"].isin(f_farm_cv)]
+    if f_doi_cv:  cv_f = cv_f[cv_f["doi_code"].isin(f_doi_cv)]
+    if f_lo_cv:   cv_f = cv_f[cv_f["lo_code"].isin(f_lo_cv)]
+    if f_hm_cv:   cv_f = cv_f[cv_f["cong_doan"].isin(f_hm_cv)]
+    if f_search_cv:
+        cv_f = cv_f[cv_f["ten_cong_viec"].str.contains(f_search_cv, case=False, na=False)]
+
+    cv_show = cv_f.head(TOP_N)
+    st.caption(f"Hiển thị {len(cv_show)} / {len(cv_f)} dòng (top {TOP_N} sau lọc)")
+
+    # Giữ số thực → sort đúng, dùng column_config để format hiển thị
+    st.dataframe(
+        cv_show[["farm_code", "doi_code", "lo_code",
+                 "ten_cong_viec", "cong_doan", "thanh_tien", "pct"]].rename(columns={
+            "farm_code":    "Farm",
+            "doi_code":     "Đội",
+            "lo_code":      "Lô",
+            "ten_cong_viec":"Công việc",
+            "cong_doan":    "Hạng mục",
+            "thanh_tien":   "Chi phí (VND)",
+            "pct":          "% tổng Công",
+        }),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Chi phí (VND)": st.column_config.NumberColumn(
+                format="%,.0f", help="VND"),
+            "% tổng Công":   st.column_config.NumberColumn(
+                format="%.2f%%", help="Phần trăm trên tổng chi phí Công"),
+        }
+    )
+else:
+    st.info("Không có dữ liệu công việc.")
+
+st.markdown('<div style="margin-top:28px"></div>', unsafe_allow_html=True)
+
+# ════════════════════════════════════════════
+# BẢNG VẬT TƯ — sort đúng (số), có filter
+# ════════════════════════════════════════════
+lbl_vt = _drill_label(include_doi=False)
+doi_note = ""
+if st.session_state.cp_doi:
+    los_of_doi = _doi_to_los.get(st.session_state.cp_doi, set())
+    doi_note = (f" · qua {len(los_of_doi)} lô của đội này"
+                if los_of_doi else " · đội này không có lô trong dim_lo_doi")
+tip(f"Vật tư chi tiết theo Lô — {lbl_vt}{doi_note}")
+
+if not dv.empty and "ten_vat_tu" in dv.columns:
+    vt_grp = (dv.groupby(["farm_code", "lo_code",
+                           "loai_vat_tu", "ten_vat_tu"])["thanh_tien"]
+               .sum().reset_index())
+    vt_grp["thanh_tien"] = pd.to_numeric(vt_grp["thanh_tien"], errors="coerce").fillna(0)
+    vt_all = vt_grp[vt_grp["thanh_tien"] > 0].copy()
+    total_v = dv["thanh_tien"].sum()
+    vt_all["pct"] = (vt_all["thanh_tien"] / total_v * 100).round(2) if total_v else 0.0
+    vt_all = vt_all.sort_values("thanh_tien", ascending=False).reset_index(drop=True)
+
+    # ── Filter widgets ──────────────────────
+    with st.expander("🔽 Lọc bảng Vật tư", expanded=False):
+        fv1, fv2, fv3 = st.columns([2, 2, 3])
+        with fv1:
+            f_farm_vt = st.multiselect("Farm", sorted(vt_all["farm_code"].unique()),
+                                       default=[], key="flt_farm_vt",
+                                       placeholder="Tất cả")
+        with fv2:
+            f_loai_vt = st.multiselect("Loại vật tư", sorted(vt_all["loai_vat_tu"].unique()),
+                                       default=[], key="flt_loai_vt",
+                                       placeholder="Tất cả")
+        with fv3:
+            f_lo_vt = st.multiselect("Lô", sorted(vt_all["lo_code"].unique()),
+                                     default=[], key="flt_lo_vt",
+                                     placeholder="Tất cả")
+        f_search_vt = st.text_input("Tìm tên vật tư", key="flt_search_vt",
+                                    placeholder="Nhập từ khoá...")
+
+    # Áp dụng filter
+    vt_f = vt_all.copy()
+    if f_farm_vt:  vt_f = vt_f[vt_f["farm_code"].isin(f_farm_vt)]
+    if f_loai_vt:  vt_f = vt_f[vt_f["loai_vat_tu"].isin(f_loai_vt)]
+    if f_lo_vt:    vt_f = vt_f[vt_f["lo_code"].isin(f_lo_vt)]
+    if f_search_vt:
+        vt_f = vt_f[vt_f["ten_vat_tu"].str.contains(f_search_vt, case=False, na=False)]
+
+    vt_show = vt_f.head(TOP_N)
+    st.caption(f"Hiển thị {len(vt_show)} / {len(vt_f)} dòng (top {TOP_N} sau lọc)")
+
+    st.dataframe(
+        vt_show[["farm_code", "lo_code", "ten_vat_tu",
+                 "loai_vat_tu", "thanh_tien", "pct"]].rename(columns={
+            "farm_code":  "Farm",
+            "lo_code":    "Lô",
+            "ten_vat_tu": "Tên vật tư",
+            "loai_vat_tu":"Loại",
+            "thanh_tien": "Chi phí (VND)",
+            "pct":        "% tổng Vật tư",
+        }),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "Chi phí (VND)": st.column_config.NumberColumn(
+                format="%,.0f", help="VND"),
+            "% tổng Vật tư": st.column_config.NumberColumn(
+                format="%.2f%%", help="Phần trăm trên tổng chi phí Vật tư"),
+        }
+    )
+else:
+    st.info("Không có dữ liệu vật tư.")
 
 st.markdown("---")
 
