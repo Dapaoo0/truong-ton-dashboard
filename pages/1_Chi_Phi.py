@@ -137,6 +137,7 @@ def load_cong(farm_ids, s, e, lo_types, sel_los, sel_dois, show_ht):
     return query(f"""
         SELECT f.farm_code, l.lo_code, d.doi_code,
                COALESCE(NULLIF(TRIM(nk.cong_doan),''),'Không ghi') as cong_doan,
+               COALESCE(NULLIF(TRIM(cv.ten_cong_viec),''),'Không ghi') as ten_cong_viec,
                DATE_TRUNC('month',nk.ngay)::date as thang,
                nk.so_cong, nk.thanh_tien, nk.is_ho_tro
         FROM fact_nhat_ky_san_xuat nk
@@ -159,6 +160,7 @@ def load_vt(farm_ids, s, e, lo_types, sel_los):
                COALESCE(NULLIF(TRIM(vt.loai_vat_tu),''),
                         NULLIF(TRIM(v.loai_vat_tu), ''),
                         'Không xác định') as loai_vat_tu,
+               COALESCE(NULLIF(TRIM(v.ten_vat_tu),''), 'Không xác định') as ten_vat_tu,
                DATE_TRUNC('month',vt.ngay)::date as thang,
                vt.thanh_tien
         FROM fact_vat_tu vt
@@ -168,18 +170,51 @@ def load_vt(farm_ids, s, e, lo_types, sel_los):
         WHERE {' AND '.join(conds)}
     """, params)
 
+@st.cache_data(ttl=300)
+def load_lo_doi_map(farm_ids):
+    """Bảng mapping lo_code -> [doi_code] qua dim_lo_doi.
+    Dùng để lọc vật tư theo đội (fact_vat_tu không có doi_id).
+    Lô có 2 đội sẽ xuất hiện 2 lần trong kết quả (nhiều-nhiều).
+    """
+    return query(f"""
+        SELECT l.lo_code, d.doi_code, f.farm_code
+        FROM dim_lo_doi ld
+        JOIN dim_lo   l ON l.lo_id  = ld.lo_id
+        JOIN dim_doi  d ON d.doi_id = ld.doi_id
+        JOIN dim_farm f ON f.farm_id = l.farm_id
+        WHERE f.farm_id IN ({','.join(['%s']*len(farm_ids))})
+    """, list(farm_ids))
+
 raw_c = load_cong(farm_ids, start_d, end_d,
                   tuple(sel_lo_types), tuple(sel_los), tuple(sel_dois), show_ht)
 raw_v = load_vt(farm_ids, start_d, end_d, tuple(sel_lo_types), tuple(sel_los))
 to_num(raw_c, ["thanh_tien", "so_cong"])
 to_num(raw_v, ["thanh_tien"])
 
+# Mapping lo_code → doi_code qua dim_lo_doi (dùng để lọc vật tư theo đội)
+lo_doi_map_df = load_lo_doi_map(farm_ids)
+# dict: doi_code → set of lo_codes thuộc đội đó
+_doi_to_los: dict = {}
+if not lo_doi_map_df.empty:
+    for _, row in lo_doi_map_df.iterrows():
+        _doi_to_los.setdefault(row["doi_code"], set()).add(row["lo_code"])
+
 def apply_drill(df):
     d = df.copy()
     if st.session_state.cp_farm and "farm_code" in d.columns:
         d = d[d["farm_code"] == st.session_state.cp_farm]
-    if st.session_state.cp_doi and "doi_code" in d.columns:
-        d = d[d["doi_code"] == st.session_state.cp_doi]
+    if st.session_state.cp_doi:
+        if "doi_code" in d.columns:
+            # fact_nhat_ky: có doi_code trực tiếp
+            d = d[d["doi_code"] == st.session_state.cp_doi]
+        elif "lo_code" in d.columns:
+            # fact_vat_tu: không có doi_code, lọc gián tiếp qua lo_code
+            los_of_doi = _doi_to_los.get(st.session_state.cp_doi, set())
+            if los_of_doi:
+                d = d[d["lo_code"].isin(los_of_doi)]
+            else:
+                # Đội không có lô nào trong dim_lo_doi → trả về empty
+                d = d.iloc[0:0]
     if st.session_state.cp_lo and "lo_code" in d.columns:
         d = d[d["lo_code"] == st.session_state.cp_lo]
     return d
@@ -634,6 +669,95 @@ with col2:
         st.plotly_chart(fig_sb_v, use_container_width=True, key="sb_vattu")
     else:
         st.info("Không có dữ liệu vật tư.")
+
+
+# ═════════════════════════════════════════════
+# CHI TIẾT HẠNG MỤC: Bảng Top công việc & Top vật tư
+# dc/dv đã apply_drill → tự lọc theo farm/đội/lô đang active
+# Lưu ý: vật tư không có doi_id → không lọc được theo đội
+# ═════════════════════════════════════════════
+section_header("Chi tiết hạng mục chi phí",
+               "top 20 · click tiêu đề cột để sort · tự lọc theo drill đang bật")
+
+# Xây context label để hiển thị trong title
+def _drill_label(include_doi=True):
+    parts = []
+    if st.session_state.cp_farm: parts.append(st.session_state.cp_farm)
+    if include_doi and st.session_state.cp_doi:
+        parts.append(f"Đội {st.session_state.cp_doi}")
+    if st.session_state.cp_lo:   parts.append(f"Lô {st.session_state.cp_lo}")
+    return " · ".join(parts) if parts else "Toàn bộ"
+
+TOP_N = 20
+
+col1, col2 = st.columns(2)
+
+# ══════════════════════════════════════════
+# CỘT TRÁI: Bảng Top công việc (dc → đội + lô + farm)
+# ══════════════════════════════════════════
+with col1:
+    lbl_cv = _drill_label(include_doi=True)
+    tip(f"Công việc — {lbl_cv}")
+    if not dc.empty and "ten_cong_viec" in dc.columns:
+        cv_grp = (dc.groupby(["ten_cong_viec", "cong_doan"])["thanh_tien"]
+                  .sum().reset_index())
+        cv_grp["thanh_tien"] = pd.to_numeric(cv_grp["thanh_tien"], errors="coerce").fillna(0)
+        cv_top = (cv_grp[cv_grp["thanh_tien"] > 0]
+                  .nlargest(TOP_N, "thanh_tien")
+                  .reset_index(drop=True))
+        cv_top["Xếp hạng"] = cv_top["thanh_tien"].rank(ascending=False).astype(int)
+        cv_top["% tổng Công"] = (cv_top["thanh_tien"] /
+                                  dc["thanh_tien"].sum() * 100).round(1)
+        disp_cv = pd.DataFrame({
+            "#":             cv_top["Xếp hạng"],
+            "Công việc":     cv_top["ten_cong_viec"],
+            "Hạng mục":      cv_top["cong_doan"],
+            "Chi phí (VND)": cv_top["thanh_tien"].apply(format_vnd),
+            "% tổng":        cv_top["% tổng Công"].apply(lambda x: f"{x:.1f}%"),
+            "_sort":         cv_top["thanh_tien"],
+        })
+        # Giữ cột _sort ẩn để sort đúng (st.dataframe sort theo giá trị hiển thị)
+        # Streamlit sort cột string theo alphabet → dùng số nguyên gốc
+        disp_cv = disp_cv.sort_values("_sort", ascending=False).drop(columns=["_sort"])
+        st.dataframe(disp_cv, use_container_width=True, hide_index=True)
+    else:
+        st.info("Không có dữ liệu công việc.")
+
+# ══════════════════════════════════════════
+# CỘT PHẢI: Bảng Top vật tư (dv → farm + lô, KHÔNG có đội)
+# ══════════════════════════════════════════
+with col2:
+    lbl_vt = _drill_label(include_doi=False)
+    doi_note = ""
+    if st.session_state.cp_doi:
+        los_of_doi = _doi_to_los.get(st.session_state.cp_doi, set())
+        if los_of_doi:
+            doi_note = f" · qua {len(los_of_doi)} lô thuộc đội này"
+        else:
+            doi_note = " · đội này không có lô nào trong dim_lo_doi"
+    tip(f"Vật tư — {lbl_vt}{doi_note}")
+    if not dv.empty and "ten_vat_tu" in dv.columns:
+        vt_grp = (dv.groupby(["ten_vat_tu", "loai_vat_tu"])["thanh_tien"]
+                  .sum().reset_index())
+        vt_grp["thanh_tien"] = pd.to_numeric(vt_grp["thanh_tien"], errors="coerce").fillna(0)
+        vt_top = (vt_grp[vt_grp["thanh_tien"] > 0]
+                  .nlargest(TOP_N, "thanh_tien")
+                  .reset_index(drop=True))
+        vt_top["Xếp hạng"] = vt_top["thanh_tien"].rank(ascending=False).astype(int)
+        vt_top["% tổng VT"] = (vt_top["thanh_tien"] /
+                                 dv["thanh_tien"].sum() * 100).round(1)
+        disp_vt = pd.DataFrame({
+            "#":             vt_top["Xếp hạng"],
+            "Tên vật tư":    vt_top["ten_vat_tu"],
+            "Loại":          vt_top["loai_vat_tu"],
+            "Chi phí (VND)": vt_top["thanh_tien"].apply(format_vnd),
+            "% tổng":        vt_top["% tổng VT"].apply(lambda x: f"{x:.1f}%"),
+        })
+        st.dataframe(disp_vt, use_container_width=True, hide_index=True)
+    else:
+        st.info("Không có dữ liệu vật tư.")
+
+st.markdown("---")
 
 # ═════════════════════════════════════════════
 # BẢNG CHI TIẾT
