@@ -172,10 +172,6 @@ def load_vt(farm_ids, s, e, lo_types, sel_los):
 
 @st.cache_data(ttl=300)
 def load_lo_doi_map(farm_ids):
-    """Bảng mapping lo_code -> [doi_code] qua dim_lo_doi.
-    Dùng để lọc vật tư theo đội (fact_vat_tu không có doi_id).
-    Lô có 2 đội sẽ xuất hiện 2 lần trong kết quả (nhiều-nhiều).
-    """
     return query(f"""
         SELECT l.lo_code, d.doi_code, f.farm_code
         FROM dim_lo_doi ld
@@ -191,9 +187,7 @@ raw_v = load_vt(farm_ids, start_d, end_d, tuple(sel_lo_types), tuple(sel_los))
 to_num(raw_c, ["thanh_tien", "so_cong"])
 to_num(raw_v, ["thanh_tien"])
 
-# Mapping lo_code → doi_code qua dim_lo_doi (dùng để lọc vật tư theo đội)
 lo_doi_map_df = load_lo_doi_map(farm_ids)
-# dict: doi_code → set of lo_codes thuộc đội đó
 _doi_to_los: dict = {}
 if not lo_doi_map_df.empty:
     for _, row in lo_doi_map_df.iterrows():
@@ -205,15 +199,12 @@ def apply_drill(df):
         d = d[d["farm_code"] == st.session_state.cp_farm]
     if st.session_state.cp_doi:
         if "doi_code" in d.columns:
-            # fact_nhat_ky: có doi_code trực tiếp
             d = d[d["doi_code"] == st.session_state.cp_doi]
         elif "lo_code" in d.columns:
-            # fact_vat_tu: không có doi_code, lọc gián tiếp qua lo_code
             los_of_doi = _doi_to_los.get(st.session_state.cp_doi, set())
             if los_of_doi:
                 d = d[d["lo_code"].isin(los_of_doi)]
             else:
-                # Đội không có lô nào trong dim_lo_doi → trả về empty
                 d = d.iloc[0:0]
     if st.session_state.cp_lo and "lo_code" in d.columns:
         d = d[d["lo_code"] == st.session_state.cp_lo]
@@ -273,7 +264,6 @@ with col2:
 
 # ═════════════════════════════════════════════
 # SECTION 1: FARM — Clickable cards
-# Mỗi farm 1 card, click = drill, breakdown xuất hiện ngay bên dưới
 # ═════════════════════════════════════════════
 section_header("Theo Farm", "click card để drill · breakdown xuất hiện bên dưới")
 
@@ -284,7 +274,6 @@ to_num(bf, ["thanh_tien_c", "thanh_tien_v"])
 bf["total"] = bf["thanh_tien_c"] + bf["thanh_tien_v"]
 bf = bf.sort_values("total", ascending=False).reset_index(drop=True)
 
-# ── Cards ─────────────────────────────────────
 FARM_ICONS = {"Farm 126": "🌿", "Farm 157": "🌾", "Farm 195": "🌱"}
 FARM_COLORS = {"Farm 126": GRN, "Farm 157": BLU, "Farm 195": C["purple"]}
 n_farms = len(bf)
@@ -302,7 +291,6 @@ for i, row in bf.iterrows():
     is_active = st.session_state.cp_farm == farm
 
     with card_cols[i % 4]:
-        # Card HTML — hiển thị info, button bên dưới để drill
         border_style = f"2px solid {AMB}" if is_active else f"1px solid {BD}"
         bg_style     = C["amber_pale"] if is_active else SF
         badge        = f'<span style="background:{AMB};color:{C["bg"]};border-radius:4px;font-size:9px;font-weight:700;padding:2px 6px;margin-left:6px">ĐANG CHỌN</span>' if is_active else ""
@@ -334,7 +322,7 @@ for i, row in bf.iterrows():
 # ── Breakdown sau khi drill farm ──────────────
 if st.session_state.cp_farm:
     active_f = st.session_state.cp_farm
-    dc_f = dc.copy()   # đã apply_drill ở trên
+    dc_f = dc.copy()
     dv_f = dv.copy()
 
     st.markdown(
@@ -345,7 +333,6 @@ if st.session_state.cp_farm:
 
     col1, col2 = st.columns(2)
     with col1:
-        # Stacked bar: chi phí theo tháng của farm đó
         mc_f = dc_f.groupby("thang")["thanh_tien"].sum().reset_index()
         mv_f = dv_f.groupby("thang")["thanh_tien"].sum().reset_index() if not dv_f.empty else pd.DataFrame(columns=["thang","thanh_tien"])
         mf = mc_f.merge(mv_f, on="thang", how="outer", suffixes=("_c","_v")).fillna(0)
@@ -361,7 +348,6 @@ if st.session_state.cp_farm:
         apply_plotly_style(fig_ft, 280)
         st.plotly_chart(fig_ft, use_container_width=True, key="farm_trend")
     with col2:
-        # Top đội trong farm đó
         doi_f = dc_f.groupby("doi_code")["thanh_tien"].sum().reset_index()
         doi_f["thanh_tien"] = pd.to_numeric(doi_f["thanh_tien"], errors="coerce").fillna(0)
         doi_f = doi_f.sort_values("thanh_tien", ascending=True).tail(10)
@@ -384,9 +370,6 @@ st.markdown("---")
 
 # ═════════════════════════════════════════════
 # SECTION 2: LÔ — Bubble chart
-# X = Chi phí Công, Y = Chi phí Vật tư
-# Size = Tổng chi phí, Color = Farm
-# Click bubble = drill lô
 # ═════════════════════════════════════════════
 section_header("Theo Lô", "bubble chart: click để drill · x=công · y=vật tư · size=tổng")
 
@@ -403,7 +386,6 @@ bl["tien_v"] = pd.to_numeric(bl["tien_v"], errors="coerce").fillna(0)
 bl["total"]  = bl["tien_c"] + bl["tien_v"]
 bl = bl[bl["total"] > 0].reset_index(drop=True)
 
-# Chỉ vẽ top 40 lô để bubble không quá dày
 top40 = bl.nlargest(40, "total").reset_index(drop=True)
 active_lo = st.session_state.cp_lo
 
@@ -418,11 +400,6 @@ for farm_name, grp in top40.groupby("farm_code"):
     color = farm_color_map.get(farm_name, GRN)
     marker_colors = [AMB if row["lo_code"] == active_lo else color
                      for _, row in grp.iterrows()]
-    marker_sizes = [max(grp["total"].max() * 0.05, 14)
-                    if row["lo_code"] == active_lo
-                    else None
-                    for _, row in grp.iterrows()]
-    # Normalize size: min=10 max=60 theo tổng
     t_max = top40["total"].max()
     t_min = top40["total"].min()
     sizes = [10 + 50 * (row["total"] - t_min) / max(t_max - t_min, 1)
@@ -486,7 +463,6 @@ if st.session_state.cp_lo:
 
     col1, col2 = st.columns(2)
     with col1:
-        # Chi phí lô đó theo tháng
         mc_lo = dc[dc["lo_code"] == active_lo_name].groupby("thang")["thanh_tien"].sum().reset_index()
         mv_lo = dv[dv["lo_code"] == active_lo_name].groupby("thang")["thanh_tien"].sum().reset_index() if not dv.empty else pd.DataFrame(columns=["thang","thanh_tien"])
         mlo = mc_lo.merge(mv_lo, on="thang", how="outer", suffixes=("_c","_v")).fillna(0)
@@ -502,7 +478,6 @@ if st.session_state.cp_lo:
         apply_plotly_style(fig_lot, 280)
         st.plotly_chart(fig_lot, use_container_width=True, key="lo_trend")
     with col2:
-        # Công đoạn trong lô đó
         cd_lo = dc[dc["lo_code"] == active_lo_name].groupby("cong_doan")["thanh_tien"].sum().reset_index()
         cd_lo["thanh_tien"] = pd.to_numeric(cd_lo["thanh_tien"], errors="coerce").fillna(0)
         cd_lo = cd_lo.sort_values("thanh_tien", ascending=True).tail(10)
@@ -523,7 +498,6 @@ st.markdown("---")
 
 # ═════════════════════════════════════════════
 # SECTION 3: ĐỘI — Stacked bar click drill
-# Breakdown xuất hiện bên dưới
 # ═════════════════════════════════════════════
 section_header("Theo Đội", "click bar để drill · breakdown xuất hiện bên dưới")
 
@@ -553,9 +527,8 @@ fig_doi.add_bar(
     opacity=0.7,
     hovertemplate="<b>%{y}</b> — Hỗ trợ<br>%{x:,.0f} VND<extra></extra>",
 )
-# Tính left margin dựa vào tên dài nhất trong pv["doi_code"]
 _max_label_len = max(len(str(d)) for d in pv["doi_code"]) if not pv.empty else 8
-_l_margin = max(80, _max_label_len * 7)  # ~7px/ký tự
+_l_margin = max(80, _max_label_len * 7)
 
 fig_doi.update_layout(
     barmode="stack", xaxis_tickformat=",.0f",
@@ -586,7 +559,6 @@ if st.session_state.cp_doi:
     dc_doi = dc[dc["doi_code"] == active_doi_name].copy()
     col1, col2 = st.columns(2)
     with col1:
-        # Chi phí đội đó theo farm
         doi_farm = dc_doi.groupby("farm_code")["thanh_tien"].sum().reset_index()
         doi_farm["thanh_tien"] = pd.to_numeric(doi_farm["thanh_tien"], errors="coerce").fillna(0)
         fig_df = go.Figure(go.Bar(
@@ -602,7 +574,6 @@ if st.session_state.cp_doi:
         apply_plotly_style(fig_df, 260)
         st.plotly_chart(fig_df, use_container_width=True, key="doi_farm_break")
     with col2:
-        # Chi phí đội theo tháng
         doi_thang = dc_doi.groupby("thang")["thanh_tien"].sum().reset_index()
         doi_thang["ts"] = pd.to_datetime(doi_thang["thang"]).dt.strftime("%m/%Y")
         fig_dt = go.Figure()
@@ -670,16 +641,12 @@ with col2:
     else:
         st.info("Không có dữ liệu vật tư.")
 
-
 # ═════════════════════════════════════════════
-# CHI TIẾT HẠNG MỤC: Bảng Top công việc & Top vật tư
-# dc/dv đã apply_drill → tự lọc theo farm/đội/lô đang active
-# Lưu ý: vật tư không có doi_id → không lọc được theo đội
+# CHI TIẾT HẠNG MỤC
 # ═════════════════════════════════════════════
 section_header("Chi tiết hạng mục chi phí",
                "top 20 · click tiêu đề cột để sort · tự lọc theo drill đang bật")
 
-# Xây context label để hiển thị trong title
 def _drill_label(include_doi=True):
     parts = []
     if st.session_state.cp_farm: parts.append(st.session_state.cp_farm)
@@ -691,7 +658,7 @@ def _drill_label(include_doi=True):
 TOP_N = 20
 
 # ════════════════════════════════════════════
-# BẢNG CÔNG VIỆC — sort đúng (số), có filter
+# BẢNG CÔNG VIỆC
 # ════════════════════════════════════════════
 lbl_cv = _drill_label(include_doi=True)
 tip(f"Công việc chi tiết theo Lô — {lbl_cv}")
@@ -706,29 +673,23 @@ if not dc.empty and "ten_cong_viec" in dc.columns:
     cv_all["pct"] = (cv_all["thanh_tien"] / total_c * 100).round(2) if total_c else 0.0
     cv_all = cv_all.sort_values("thanh_tien", ascending=False).reset_index(drop=True)
 
-    # ── Filter widgets ──────────────────────
     with st.expander("🔽 Lọc bảng Công việc", expanded=False):
         fc1, fc2, fc3, fc4 = st.columns([2, 2, 2, 3])
         with fc1:
             f_farm_cv = st.multiselect("Farm", sorted(cv_all["farm_code"].unique()),
-                                       default=[], key="flt_farm_cv",
-                                       placeholder="Tất cả")
+                                       default=[], key="flt_farm_cv", placeholder="Tất cả")
         with fc2:
             f_doi_cv = st.multiselect("Đội", sorted(cv_all["doi_code"].unique()),
-                                      default=[], key="flt_doi_cv",
-                                      placeholder="Tất cả")
+                                      default=[], key="flt_doi_cv", placeholder="Tất cả")
         with fc3:
             f_lo_cv = st.multiselect("Lô", sorted(cv_all["lo_code"].unique()),
-                                     default=[], key="flt_lo_cv",
-                                     placeholder="Tất cả")
+                                     default=[], key="flt_lo_cv", placeholder="Tất cả")
         with fc4:
             f_hm_cv = st.multiselect("Hạng mục", sorted(cv_all["cong_doan"].unique()),
-                                     default=[], key="flt_hm_cv",
-                                     placeholder="Tất cả")
+                                     default=[], key="flt_hm_cv", placeholder="Tất cả")
         f_search_cv = st.text_input("Tìm tên công việc", key="flt_search_cv",
                                     placeholder="Nhập từ khoá...")
 
-    # Áp dụng filter
     cv_f = cv_all.copy()
     if f_farm_cv: cv_f = cv_f[cv_f["farm_code"].isin(f_farm_cv)]
     if f_doi_cv:  cv_f = cv_f[cv_f["doi_code"].isin(f_doi_cv)]
@@ -740,34 +701,27 @@ if not dc.empty and "ten_cong_viec" in dc.columns:
     cv_show = cv_f.head(TOP_N)
     st.caption(f"Hiển thị {len(cv_show)} / {len(cv_f)} dòng (top {TOP_N} sau lọc)")
 
-    # Giữ số thực → sort đúng, dùng column_config để format hiển thị
-    st.dataframe(
-        cv_show[["farm_code", "doi_code", "lo_code",
-                 "ten_cong_viec", "cong_doan", "thanh_tien", "pct"]].rename(columns={
-            "farm_code":    "Farm",
-            "doi_code":     "Đội",
-            "lo_code":      "Lô",
-            "ten_cong_viec":"Công việc",
-            "cong_doan":    "Hạng mục",
-            "thanh_tien":   "Chi phí (VND)",
-            "pct":          "% tổng Công",
-        }),
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Chi phí (VND)": st.column_config.NumberColumn(
-                format="%,.0f", help="VND"),
-            "% tổng Công":   st.column_config.NumberColumn(
-                format="%.2f%%", help="Phần trăm trên tổng chi phí Công"),
-        }
-    )
+    # ── FIX: pre-format số → không còn icon ⚠️ ──
+    _cv_display = cv_show[["farm_code", "doi_code", "lo_code",
+                            "ten_cong_viec", "cong_doan", "thanh_tien", "pct"]].rename(columns={
+        "farm_code":     "Farm",
+        "doi_code":      "Đội",
+        "lo_code":       "Lô",
+        "ten_cong_viec": "Công việc",
+        "cong_doan":     "Hạng mục",
+        "thanh_tien":    "Chi phí (VND)",
+        "pct":           "% tổng Công",
+    }).copy()
+    _cv_display["Chi phí (VND)"] = _cv_display["Chi phí (VND)"].apply(lambda x: f"{int(x):,}")
+    _cv_display["% tổng Công"]   = _cv_display["% tổng Công"].apply(lambda x: f"{x:.2f}%")
+    st.dataframe(_cv_display, use_container_width=True, hide_index=True)
 else:
     st.info("Không có dữ liệu công việc.")
 
 st.markdown('<div style="margin-top:28px"></div>', unsafe_allow_html=True)
 
 # ════════════════════════════════════════════
-# BẢNG VẬT TƯ — sort đúng (số), có filter
+# BẢNG VẬT TƯ
 # ════════════════════════════════════════════
 lbl_vt = _drill_label(include_doi=False)
 doi_note = ""
@@ -787,25 +741,20 @@ if not dv.empty and "ten_vat_tu" in dv.columns:
     vt_all["pct"] = (vt_all["thanh_tien"] / total_v * 100).round(2) if total_v else 0.0
     vt_all = vt_all.sort_values("thanh_tien", ascending=False).reset_index(drop=True)
 
-    # ── Filter widgets ──────────────────────
     with st.expander("🔽 Lọc bảng Vật tư", expanded=False):
         fv1, fv2, fv3 = st.columns([2, 2, 3])
         with fv1:
             f_farm_vt = st.multiselect("Farm", sorted(vt_all["farm_code"].unique()),
-                                       default=[], key="flt_farm_vt",
-                                       placeholder="Tất cả")
+                                       default=[], key="flt_farm_vt", placeholder="Tất cả")
         with fv2:
             f_loai_vt = st.multiselect("Loại vật tư", sorted(vt_all["loai_vat_tu"].unique()),
-                                       default=[], key="flt_loai_vt",
-                                       placeholder="Tất cả")
+                                       default=[], key="flt_loai_vt", placeholder="Tất cả")
         with fv3:
             f_lo_vt = st.multiselect("Lô", sorted(vt_all["lo_code"].unique()),
-                                     default=[], key="flt_lo_vt",
-                                     placeholder="Tất cả")
+                                     default=[], key="flt_lo_vt", placeholder="Tất cả")
         f_search_vt = st.text_input("Tìm tên vật tư", key="flt_search_vt",
                                     placeholder="Nhập từ khoá...")
 
-    # Áp dụng filter
     vt_f = vt_all.copy()
     if f_farm_vt:  vt_f = vt_f[vt_f["farm_code"].isin(f_farm_vt)]
     if f_loai_vt:  vt_f = vt_f[vt_f["loai_vat_tu"].isin(f_loai_vt)]
@@ -816,32 +765,26 @@ if not dv.empty and "ten_vat_tu" in dv.columns:
     vt_show = vt_f.head(TOP_N)
     st.caption(f"Hiển thị {len(vt_show)} / {len(vt_f)} dòng (top {TOP_N} sau lọc)")
 
-    st.dataframe(
-        vt_show[["farm_code", "lo_code", "ten_vat_tu",
-                 "loai_vat_tu", "thanh_tien", "pct"]].rename(columns={
-            "farm_code":  "Farm",
-            "lo_code":    "Lô",
-            "ten_vat_tu": "Tên vật tư",
-            "loai_vat_tu":"Loại",
-            "thanh_tien": "Chi phí (VND)",
-            "pct":        "% tổng Vật tư",
-        }),
-        use_container_width=True,
-        hide_index=True,
-        column_config={
-            "Chi phí (VND)": st.column_config.NumberColumn(
-                format="%,.0f", help="VND"),
-            "% tổng Vật tư": st.column_config.NumberColumn(
-                format="%.2f%%", help="Phần trăm trên tổng chi phí Vật tư"),
-        }
-    )
+    # ── FIX: pre-format số → không còn icon ⚠️ ──
+    _vt_display = vt_show[["farm_code", "lo_code", "ten_vat_tu",
+                            "loai_vat_tu", "thanh_tien", "pct"]].rename(columns={
+        "farm_code":  "Farm",
+        "lo_code":    "Lô",
+        "ten_vat_tu": "Tên vật tư",
+        "loai_vat_tu":"Loại",
+        "thanh_tien": "Chi phí (VND)",
+        "pct":        "% tổng Vật tư",
+    }).copy()
+    _vt_display["Chi phí (VND)"] = _vt_display["Chi phí (VND)"].apply(lambda x: f"{int(x):,}")
+    _vt_display["% tổng Vật tư"] = _vt_display["% tổng Vật tư"].apply(lambda x: f"{x:.2f}%")
+    st.dataframe(_vt_display, use_container_width=True, hide_index=True)
 else:
     st.info("Không có dữ liệu vật tư.")
 
 st.markdown("---")
 
 # ═════════════════════════════════════════════
-# BẢNG CHI TIẾT
+# BẢNG CHI TIẾT THEO LÔ
 # ═════════════════════════════════════════════
 with st.expander("📋 Bảng chi tiết theo Lô"):
     _lc = raw_c.groupby(["farm_code", "lo_code"])["thanh_tien"].sum().reset_index()
