@@ -655,7 +655,44 @@ def _drill_label(include_doi=True):
     if st.session_state.cp_lo:   parts.append(f"Lô {st.session_state.cp_lo}")
     return " · ".join(parts) if parts else "Toàn bộ"
 
-TOP_N = 20
+PAGE_SIZE = 1000
+
+# Khởi tạo pagination session state
+for _pk in ["cv_page", "vt_page"]:
+    if _pk not in st.session_state:
+        st.session_state[_pk] = 0
+
+def pagination_controls(total_rows, page_key, page_size=PAGE_SIZE):
+    """Hiển thị điều hướng trang, trả về (start, end) slice."""
+    total_pages = max(1, -(-total_rows // page_size))  # ceil division
+    page = st.session_state[page_key]
+    # Clamp nếu filter làm giảm số trang
+    if page >= total_pages:
+        page = total_pages - 1
+        st.session_state[page_key] = page
+
+    col_info, col_prev, col_page, col_next = st.columns([4, 1, 2, 1])
+    with col_info:
+        start = page * page_size
+        end   = min(start + page_size, total_rows)
+        st.caption(f"Hiển thị **{start+1}–{end}** / {total_rows:,} dòng  ·  Trang {page+1}/{total_pages}  ·  *(click tiêu đề cột để sort)*")
+    with col_prev:
+        if st.button("◀ Trước", key=f"prev_{page_key}", disabled=(page == 0)):
+            st.session_state[page_key] -= 1
+            st.rerun()
+    with col_page:
+        # Nhảy thẳng đến trang
+        jump = st.number_input("Trang", min_value=1, max_value=total_pages,
+                               value=page + 1, step=1, key=f"jump_{page_key}",
+                               label_visibility="collapsed")
+        if jump - 1 != page:
+            st.session_state[page_key] = jump - 1
+            st.rerun()
+    with col_next:
+        if st.button("Tiếp ▶", key=f"next_{page_key}", disabled=(page >= total_pages - 1)):
+            st.session_state[page_key] += 1
+            st.rerun()
+    return start, end
 
 # ════════════════════════════════════════════
 # BẢNG CÔNG VIỆC
@@ -698,10 +735,10 @@ if not dc.empty and "ten_cong_viec" in dc.columns:
     if f_search_cv:
         cv_f = cv_f[cv_f["ten_cong_viec"].str.contains(f_search_cv, case=False, na=False)]
 
-    cv_show = cv_f.head(TOP_N)
-    st.caption(f"Hiển thị {len(cv_show)} / {len(cv_f)} dòng (top {TOP_N} sau lọc)")
+    # Reset trang khi filter thay đổi
+    _cv_start, _cv_end = pagination_controls(len(cv_f), "cv_page")
+    cv_show = cv_f.iloc[_cv_start:_cv_end]
 
-    # ── FIX: pre-format số → không còn icon ⚠️ ──
     _cv_display = cv_show[["farm_code", "doi_code", "lo_code",
                             "ten_cong_viec", "cong_doan", "thanh_tien", "pct"]].rename(columns={
         "farm_code":     "Farm",
@@ -714,7 +751,7 @@ if not dc.empty and "ten_cong_viec" in dc.columns:
     }).copy()
     _cv_display["Chi phí (VND)"] = _cv_display["Chi phí (VND)"].apply(lambda x: f"{int(x):,}")
     _cv_display["% tổng Công"]   = _cv_display["% tổng Công"].apply(lambda x: f"{x:.2f}%")
-    st.dataframe(_cv_display, use_container_width=True, hide_index=True)
+    st.dataframe(_cv_display, use_container_width=True, hide_index=True, height=600)
 else:
     st.info("Không có dữ liệu công việc.")
 
@@ -762,10 +799,9 @@ if not dv.empty and "ten_vat_tu" in dv.columns:
     if f_search_vt:
         vt_f = vt_f[vt_f["ten_vat_tu"].str.contains(f_search_vt, case=False, na=False)]
 
-    vt_show = vt_f.head(TOP_N)
-    st.caption(f"Hiển thị {len(vt_show)} / {len(vt_f)} dòng (top {TOP_N} sau lọc)")
+    _vt_start, _vt_end = pagination_controls(len(vt_f), "vt_page")
+    vt_show = vt_f.iloc[_vt_start:_vt_end]
 
-    # ── FIX: pre-format số → không còn icon ⚠️ ──
     _vt_display = vt_show[["farm_code", "lo_code", "ten_vat_tu",
                             "loai_vat_tu", "thanh_tien", "pct"]].rename(columns={
         "farm_code":  "Farm",
@@ -777,7 +813,7 @@ if not dv.empty and "ten_vat_tu" in dv.columns:
     }).copy()
     _vt_display["Chi phí (VND)"] = _vt_display["Chi phí (VND)"].apply(lambda x: f"{int(x):,}")
     _vt_display["% tổng Vật tư"] = _vt_display["% tổng Vật tư"].apply(lambda x: f"{x:.2f}%")
-    st.dataframe(_vt_display, use_container_width=True, hide_index=True)
+    st.dataframe(_vt_display, use_container_width=True, hide_index=True, height=600)
 else:
     st.info("Không có dữ liệu vật tư.")
 
