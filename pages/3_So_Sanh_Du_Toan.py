@@ -245,8 +245,15 @@ if not grp.empty:
         xaxis=dict(tickangle=-35, automargin=True),
         title=dict(text="Thực tế (màu) chồng lên Dự toán (xám)",
                    font=dict(size=12, color=TM)),
+        legend=dict(
+            orientation="h",
+            y=1.12, x=1, xanchor="right", yanchor="bottom",
+            bgcolor="rgba(0,0,0,0)", borderwidth=0,
+            font=dict(color=C["text_sub"], size=11),
+        ),
+        margin=dict(t=60, b=120, l=8, r=8),
     )
-    apply_plotly_style(fig_hm, 400)
+    apply_plotly_style(fig_hm, 440)
     st.plotly_chart(fig_hm, use_container_width=True, key="bar_hm")
 
     # Progress cards theo từng hạng mục
