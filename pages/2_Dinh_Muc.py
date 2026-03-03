@@ -85,9 +85,7 @@ def load_dm(farm_ids, s, e, sel_dois, sel_los, include_ht):
                nk.ngay,
                nk.so_cong, nk.klcv, nk.dinh_muc,
                CASE WHEN nk.so_cong > 0 THEN nk.klcv / nk.so_cong ELSE NULL END as ns_thuc,
-               CASE WHEN nk.dinh_muc > 0 AND nk.so_cong > 0
-                    THEN ROUND((nk.klcv / nk.so_cong / nk.dinh_muc * 100)::numeric, 1)
-                    ELSE NULL END as ti_le
+               nk.ti_le_display as ti_le
         FROM fact_nhat_ky_san_xuat nk
         JOIN dim_farm f ON f.farm_id = nk.farm_id
         JOIN dim_lo l ON l.lo_id = nk.lo_id
