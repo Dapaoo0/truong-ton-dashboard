@@ -1,7 +1,25 @@
-# Bảo vệ thông tin nhạy cảm
+# Bao ve thong tin nhay cam
 .streamlit/secrets.toml
 __pycache__/
 *.pyc
 .env
 venv/
 .venv/
+
+# Credentials & tokens
+credentials.json
+token.json
+
+# Output files (khong can commit)
+explore_db_output.txt
+explore_sheets_output.txt
+view_def.txt
+
+# Utility/test scripts (chi dung local)
+test_db.py
+test_sheets_local.py
+explore_db.py
+explore_sheets.py
+get_view.py
+apply_schema_fixes.py
+update_view_and_drop.py
