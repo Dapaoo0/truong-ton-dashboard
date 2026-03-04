@@ -1,23 +1,33 @@
 import streamlit as st
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 import pandas as pd
 
-def get_conn_params():
+
+@st.cache_resource
+def _get_pool():
+    """Tạo connection pool (cache theo resource → chỉ tạo 1 lần)."""
     cfg = st.secrets["supabase"]
-    return dict(host=cfg["host"], port=cfg["port"], database=cfg["database"],
-                user=cfg["user"], password=cfg["password"],
-                sslmode="require", connect_timeout=10)
+    return psycopg2.pool.SimpleConnectionPool(
+        minconn=1, maxconn=5,
+        host=cfg["host"], port=cfg["port"], database=cfg["database"],
+        user=cfg["user"], password=cfg["password"],
+        sslmode="require", connect_timeout=10,
+    )
+
 
 def query(sql: str, params=None) -> pd.DataFrame:
-    conn = psycopg2.connect(**get_conn_params())
+    pool = _get_pool()
+    conn = pool.getconn()
     try:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute(sql, params or [])
             rows = cur.fetchall()
             return pd.DataFrame([dict(r) for r in rows])
     finally:
-        conn.close()
+        pool.putconn(conn)
+
 
 @st.cache_data(ttl=300)
 def load_farms():
