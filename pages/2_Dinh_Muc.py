@@ -6,7 +6,8 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from db import query, load_farms, load_filter_options, load_date_range, format_pct
 from style import (inject_css, page_header, kpi_row, section_header, progress_bar,
-                   tip, drill_badge, apply_plotly_style, C, CLR_DAT, CLR_KHONG, CLR_WARN)
+                   tip, drill_badge, apply_plotly_style, chart_or_table,
+                   C, CLR_DAT, CLR_KHONG, CLR_WARN)
 
 st.set_page_config(page_title="Định Mức", page_icon="📊", layout="wide")
 inject_css()
@@ -179,7 +180,9 @@ fig_time.add_hline(y=80, line_dash="dot", line_color=C["blue"],
                    annotation_font_color=C["blue"])
 fig_time.update_layout(yaxis_ticksuffix="%", yaxis_range=[0, max(df_t["trung_binh"].max()*1.2, 120)])
 apply_plotly_style(fig_time, 320)
-st.plotly_chart(fig_time, use_container_width=True, key="time_chart")
+chart_or_table(fig_time, df_t[["ngay","trung_binh","trung_vi","so_luot"]].rename(
+    columns={"ngay":"Thời gian","trung_binh":"TB %","trung_vi":"Trung vị %","so_luot":"Số lượt"}),
+    key="time_chart")
 
 # ─────────────────────────────────────────────
 # THEO FARM — bar trung bình tỉ lệ HT, click drill
@@ -205,8 +208,9 @@ fig_f.add_hline(y=100, line_dash="dash", line_color=C["border2"])
 fig_f.add_hline(y=80, line_dash="dot", line_color=C["blue"])
 fig_f.update_layout(yaxis_ticksuffix="%", yaxis_range=[0, max(bf["trung_binh"].max()*1.3, 120)])
 apply_plotly_style(fig_f, 260)
-ev_f = st.plotly_chart(fig_f, use_container_width=True, key="chart_f",
-                       on_select="rerun", selection_mode="points")
+ev_f = chart_or_table(fig_f, bf[["farm_code","trung_binh","so_luot"]].rename(
+    columns={"farm_code":"Farm","trung_binh":"TB %","so_luot":"Số lượt"}),
+    key="chart_f", on_select="rerun", selection_mode="points")
 if ev_f and ev_f.selection and ev_f.selection.get("points"):
     c = ev_f.selection.get("points")[0].get("x")
     if c and c != st.session_state.dm_farm:
@@ -246,8 +250,9 @@ with col1:
                         margin=dict(t=44, b=48, l=_l_d, r=8),
                         title=dict(text="Theo Đội", font=dict(size=12, color=C["text_muted"])))
     apply_plotly_style(fig_d, max(400, len(bd) * 26))
-    ev_d = st.plotly_chart(fig_d, use_container_width=True, key="chart_d",
-                           on_select="rerun", selection_mode="points")
+    ev_d = chart_or_table(fig_d, bd[["doi_code","trung_binh","so_luot"]].rename(
+        columns={"doi_code":"Đội","trung_binh":"TB %","so_luot":"Số lượt"}),
+        key="chart_d", on_select="rerun", selection_mode="points")
     if ev_d and ev_d.selection and ev_d.selection.get("points"):
         c = ev_d.selection.get("points")[0].get("y")
         if c and c != st.session_state.dm_doi:
@@ -282,8 +287,9 @@ with col2:
                         title=dict(text="Theo Lô (click để drill)",
                                    font=dict(size=12, color=C["text_muted"])))
     apply_plotly_style(fig_l, max(400, len(bl)*26))
-    ev_l = st.plotly_chart(fig_l, use_container_width=True, key="chart_l",
-                           on_select="rerun", selection_mode="points")
+    ev_l = chart_or_table(fig_l, bl[["label","trung_binh","so_luot"]].rename(
+        columns={"label":"Farm · Lô","trung_binh":"TB %","so_luot":"Số lượt"}),
+        key="chart_l", on_select="rerun", selection_mode="points")
     if ev_l and ev_l.selection and ev_l.selection.get("points"):
         lbl = ev_l.selection.get("points")[0].get("y","")
         if " · " in lbl:
@@ -324,7 +330,8 @@ fig_hm.update_layout(
     yaxis=dict(tickfont=dict(color=C["text_muted"], size=10)),
 )
 apply_plotly_style(fig_hm, max(380, len(cv_list)*24))
-st.plotly_chart(fig_hm, use_container_width=True, key="heatmap_cv")
+hm_table = pivot.reset_index().rename(columns={"ten_cong_viec":"Công việc"})
+chart_or_table(fig_hm, hm_table, key="heatmap_cv")
 
 # ─────────────────────────────────────────────
 # BẢNG CHI TIẾT THEO CÔNG VIỆC

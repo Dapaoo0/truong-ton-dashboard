@@ -6,7 +6,8 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from db import query, load_farms, load_filter_options, load_date_range, format_vnd
 from style import (inject_css, page_header, kpi_row, section_header, tip,
-                   drill_badge, apply_plotly_style, C, BAR_CONG, BAR_VAT_TU)
+                   drill_badge, apply_plotly_style, chart_or_table,
+                   C, BAR_CONG, BAR_VAT_TU)
 
 st.set_page_config(page_title="Chi Phí", page_icon="💰", layout="wide")
 inject_css()
@@ -252,7 +253,8 @@ with col1:
                 hovertemplate="<b>%{x}</b><br>Vật tư: %{y:,.0f} VND<extra></extra>")
     fig.update_layout(barmode="stack", yaxis_tickformat=",.0f")
     apply_plotly_style(fig, 300)
-    st.plotly_chart(fig, use_container_width=True, key="monthly")
+    chart_or_table(fig, m.rename(columns={"ts":"Tháng","thanh_tien_c":"Công (VND)","thanh_tien_v":"Vật tư (VND)"}),
+        key="monthly")
 with col2:
     fig2 = go.Figure(go.Pie(
         labels=["Công", "Vật tư"], values=[tc, tv],
@@ -439,8 +441,9 @@ fig_bubble.update_layout(
                font=dict(size=12, color=TM)),
 )
 apply_plotly_style(fig_bubble, 480)
-ev_bubble = st.plotly_chart(fig_bubble, use_container_width=True, key="lo_bubble",
-                            on_select="rerun", selection_mode="points")
+ev_bubble = chart_or_table(fig_bubble, top40[["farm_code","lo_code","tien_c","tien_v","total"]].rename(
+    columns={"farm_code":"Farm","lo_code":"Lô","tien_c":"Công (VND)","tien_v":"Vật tư (VND)","total":"Tổng (VND)"}),
+    key="lo_bubble", on_select="rerun", selection_mode="points")
 if ev_bubble and ev_bubble.selection and ev_bubble.selection.get("points"):
     pt = ev_bubble.selection.get("points")[0]
     lo_clicked = pt.get("customdata", [None])[0] if pt.get("customdata") else None
@@ -538,8 +541,9 @@ fig_doi.update_layout(
     margin=dict(t=44, b=48, l=_l_margin, r=8),
 )
 apply_plotly_style(fig_doi, max(400, len(pv) * 26))
-ev_doi = st.plotly_chart(fig_doi, use_container_width=True, key="doi_bar",
-                         on_select="rerun", selection_mode="points")
+ev_doi = chart_or_table(fig_doi, pv[["doi_code","Chính chủ","Hỗ trợ","total"]].rename(
+    columns={"doi_code":"Đội","total":"Tổng (VND)"}),
+    key="doi_bar", on_select="rerun", selection_mode="points")
 if ev_doi and ev_doi.selection and ev_doi.selection.get("points"):
     clicked = ev_doi.selection.get("points")[0].get("y")
     if clicked and clicked != st.session_state.cp_doi:
@@ -617,7 +621,9 @@ with col1:
             title=dict(text="Chi phí Công: Farm → Đội → Công đoạn",
                        font=dict(size=12, color=TM)))
         apply_plotly_style(fig_sb_c, 420)
-        st.plotly_chart(fig_sb_c, use_container_width=True, key="sb_cong")
+        chart_or_table(fig_sb_c, dc_sb.groupby(["farm_code","doi_code","cong_doan"])["thanh_tien"].sum().reset_index().rename(
+            columns={"farm_code":"Farm","doi_code":"Đội","cong_doan":"Công đoạn","thanh_tien":"Chi phí (VND)"}),
+            key="sb_cong")
     else:
         st.info("Không có dữ liệu công đoạn.")
 
@@ -637,7 +643,9 @@ with col2:
             title=dict(text="Chi phí Vật tư: Farm → Lô → Loại vật tư",
                        font=dict(size=12, color=TM)))
         apply_plotly_style(fig_sb_v, 420)
-        st.plotly_chart(fig_sb_v, use_container_width=True, key="sb_vattu")
+        chart_or_table(fig_sb_v, dv_sb.groupby(["farm_code","lo_code","loai_vat_tu"])["thanh_tien"].sum().reset_index().rename(
+            columns={"farm_code":"Farm","lo_code":"Lô","loai_vat_tu":"Loại VT","thanh_tien":"Chi phí (VND)"}),
+            key="sb_vattu")
     else:
         st.info("Không có dữ liệu vật tư.")
 

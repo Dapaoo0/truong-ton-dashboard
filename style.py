@@ -213,3 +213,31 @@ def drill_badge(label, value, key_suffix, on_clear):
         f'<span style="color:{C["green"]};font-weight:600;margin-left:4px">{value}</span></div>',
         unsafe_allow_html=True)
     st.button("✕ Bỏ lọc", on_click=on_clear, key=f"clear_{key_suffix}")
+
+
+def chart_or_table(fig, df, key, height=None, on_select=None, selection_mode=None):
+    """Hiển thị chart Plotly với toggle để xem dạng bảng.
+
+    Args:
+        fig: Plotly Figure object
+        df: DataFrame chứa dữ liệu tương ứng để hiển thị dạng bảng
+        key: unique key cho chart/toggle
+        height: chiều cao dataframe (chỉ dùng khi hiển thị bảng)
+        on_select: nếu cần, truyền "rerun" để bật click events
+        selection_mode: "points" nếu cần click events
+
+    Returns:
+        event object nếu on_select được bật, None nếu đang hiển thị bảng
+    """
+    show_table = st.toggle("📋 Xem bảng", value=False, key=f"tbl_{key}")
+    if show_table:
+        st.dataframe(df, use_container_width=True, hide_index=True,
+                      height=height or 400)
+        return None
+    else:
+        kwargs = dict(use_container_width=True, key=key)
+        if on_select:
+            kwargs["on_select"] = on_select
+        if selection_mode:
+            kwargs["selection_mode"] = selection_mode
+        return st.plotly_chart(fig, **kwargs)

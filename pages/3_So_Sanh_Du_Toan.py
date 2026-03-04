@@ -5,7 +5,8 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from db import query
 from style import (inject_css, page_header, kpi_row, section_header,
-                   tip, apply_plotly_style, C, BAR_CONG, BAR_VAT_TU)
+                   tip, apply_plotly_style, chart_or_table,
+                   C, BAR_CONG, BAR_VAT_TU)
 
 st.set_page_config(page_title="So Sánh Dự Toán · Farm 195", page_icon="🎯", layout="wide")
 inject_css()
@@ -254,7 +255,9 @@ if not grp.empty:
         margin=dict(t=60, b=120, l=8, r=8),
     )
     apply_plotly_style(fig_hm, 440)
-    st.plotly_chart(fig_hm, use_container_width=True, key="bar_hm")
+    chart_or_table(fig_hm, grp[["label","thuc_te","du_toan","pct"]].rename(
+        columns={"label":"Hạng mục","thuc_te":"Thực tế (VND)","du_toan":"Dự toán (VND)","pct":"% TH"}),
+        key="bar_hm")
 
     # Progress cards theo từng hạng mục
     tip("Thẻ bên dưới tóm tắt tỉ lệ thực hiện từng hạng mục · xanh = đúng ngân sách · đỏ = vượt")
@@ -336,7 +339,9 @@ with col1:
                    font=dict(size=12, color=TM)),
     )
     apply_plotly_style(fig_thang, 340)
-    st.plotly_chart(fig_thang, use_container_width=True, key="thang_bar")
+    chart_or_table(fig_thang, m[["thang_str","thuc_te","du_toan"]].rename(
+        columns={"thang_str":"Tháng","thuc_te":"Thực tế (VND)","du_toan":"Dự toán (VND)"}),
+        key="thang_bar")
 
 with col2:
     # % thực hiện theo tháng — line chart
@@ -368,7 +373,9 @@ with col2:
                    font=dict(size=12, color=TM)),
     )
     apply_plotly_style(fig_pct, 340)
-    st.plotly_chart(fig_pct, use_container_width=True, key="pct_thang")
+    chart_or_table(fig_pct, m_valid[["thang_str","pct"]].rename(
+        columns={"thang_str":"Tháng","pct":"% Thực hiện"}),
+        key="pct_thang")
 
 st.markdown("---")
 
@@ -540,7 +547,9 @@ if not df_ngoai.empty:
                        font=dict(size=12, color=TM)),
         )
         apply_plotly_style(fig_ngoai, max(320, len(ngoai_sum) * 36))
-        st.plotly_chart(fig_ngoai, use_container_width=True, key="bar_ngoai")
+        chart_or_table(fig_ngoai, ngoai_sum[["label","gia_tri"]].rename(
+            columns={"label":"Hạng mục","gia_tri":"Thành tiền (VND)"}),
+            key="bar_ngoai")
 
     with col2:
         # Pie chart phân bổ ngoài dự toán theo loại chi phí
@@ -559,7 +568,9 @@ if not df_ngoai.empty:
             showlegend=False,
         )
         apply_plotly_style(fig_pie_n, 320)
-        st.plotly_chart(fig_pie_n, use_container_width=True, key="pie_ngoai")
+        chart_or_table(fig_pie_n, pie_ngoai.rename(
+            columns={"loai_chi_phi":"Loại CP","gia_tri":"Thành tiền (VND)"}),
+            key="pie_ngoai")
 
     # Bảng chi tiết ngoài dự toán
     with st.expander("📋 Chi tiết từng dòng Ngoài dự toán"):
