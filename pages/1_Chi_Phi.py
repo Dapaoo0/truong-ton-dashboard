@@ -53,8 +53,6 @@ div[data-testid="stButton"] > button[kind="primary"] {{
 # ─────────────────────────────────────────────
 # SESSION STATE
 # ─────────────────────────────────────────────
-# INITIALIZE SESSION STATE
-# ─────────────────────────────────────────────
 for k in ["cp_farm", "cp_doi", "cp_lo", "flt_farm_cv", "flt_doi_cv", "flt_lo_cv", "flt_hm_cv"]:
     if k not in st.session_state:
         st.session_state[k] = [] if k.startswith("flt_") else None
@@ -72,7 +70,6 @@ def to_num(df, cols):
     return df
 
 def fmt_m(val):
-    """Rút gọn số tiền."""
     if val >= 1e9: return f"{val/1e9:.1f} tỷ"
     if val >= 1e6: return f"{val/1e6:.0f}M"
     return f"{val:,.0f}"
@@ -142,7 +139,8 @@ def load_cong(farm_ids, s, e, lo_types, sel_los, sel_dois, show_ht):
     if not show_ht: conds.append("nk.is_ho_tro = FALSE")
     return query(f"""
         SELECT f.farm_code, l.lo_code, d.doi_code,
-               COALESCE(NULLIF(TRIM(nk.cong_doan),''),'Không ghi') as cong_doan,
+               -- FIX: cong_doan nằm trong dim_cong_viec, không phải fact table
+               COALESCE(NULLIF(TRIM(cv.cong_doan),''),'Không ghi') as cong_doan,
                COALESCE(NULLIF(TRIM(cv.ten_cong_viec),''),'Không ghi') as ten_cong_viec,
                DATE_TRUNC('month',nk.ngay)::date as thang,
                nk.so_cong, nk.thanh_tien, nk.is_ho_tro
@@ -163,9 +161,8 @@ def load_vt(farm_ids, s, e, lo_types, sel_los):
     if sel_los:  conds.append(f"l.lo_code IN ({','.join(['%s']*len(sel_los))})");  params += list(sel_los)
     return query(f"""
         SELECT f.farm_code, l.lo_code,
-               COALESCE(NULLIF(TRIM(vt.loai_vat_tu),''),
-                        NULLIF(TRIM(v.loai_vat_tu), ''),
-                        'Không xác định') as loai_vat_tu,
+               -- FIX: loai_vat_tu chỉ có trong dim_vat_tu (v), không có trong fact_vat_tu
+               COALESCE(NULLIF(TRIM(v.loai_vat_tu), ''), 'Không xác định') as loai_vat_tu,
                COALESCE(NULLIF(TRIM(v.ten_vat_tu),''), 'Không xác định') as ten_vat_tu,
                DATE_TRUNC('month',vt.ngay)::date as thang,
                vt.thanh_tien
@@ -670,16 +667,13 @@ def _drill_label(include_doi=True):
 
 PAGE_SIZE = 1000
 
-# Khởi tạo pagination session state
 for _pk in ["cv_page", "vt_page"]:
     if _pk not in st.session_state:
         st.session_state[_pk] = 0
 
 def pagination_controls(total_rows, page_key, page_size=PAGE_SIZE):
-    """Hiển thị điều hướng trang, trả về (start, end) slice."""
-    total_pages = max(1, -(-total_rows // page_size))  # ceil division
+    total_pages = max(1, -(-total_rows // page_size))
     page = st.session_state[page_key]
-    # Clamp nếu filter làm giảm số trang
     if page >= total_pages:
         page = total_pages - 1
         st.session_state[page_key] = page
@@ -694,9 +688,8 @@ def pagination_controls(total_rows, page_key, page_size=PAGE_SIZE):
             st.session_state[page_key] -= 1
             st.rerun()
     with col_page:
-        # Nhảy thẳng đến trang
         jump = st.number_input("Trang", min_value=1, max_value=total_pages,
-                               value=page + 1, step=1, key=f"jump_{page_key}",
+                               jump=page + 1, step=1, key=f"jump_{page_key}",
                                label_visibility="collapsed")
         if jump - 1 != page:
             st.session_state[page_key] = jump - 1
@@ -748,7 +741,6 @@ if not dc.empty and "ten_cong_viec" in dc.columns:
     if f_search_cv:
         cv_f = cv_f[cv_f["ten_cong_viec"].str.contains(f_search_cv, case=False, na=False)]
 
-    # Reset trang khi filter thay đổi
     _cv_start, _cv_end = pagination_controls(len(cv_f), "cv_page")
     cv_show = cv_f.iloc[_cv_start:_cv_end]
 
