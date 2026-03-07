@@ -140,7 +140,7 @@ kpi_row([
 section_header(f"Biến động tỉ lệ hoàn thành theo {granularity.lower()}",
                "median ít outlier hơn mean khi có dữ liệu bất thường")
 
-df_t = df.set_index("ngay").resample(gran_freq)["ti_le"].agg(
+df_t = df.set_index("ngay").resample(gran_freq.replace("M", "ME"))["ti_le"].agg(
     trung_binh="mean", trung_vi="median", so_luot="count"
 ).reset_index()
 df_t["trung_binh"] = df_t["trung_binh"].round(1)

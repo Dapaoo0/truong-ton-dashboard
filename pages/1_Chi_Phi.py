@@ -53,9 +53,14 @@ div[data-testid="stButton"] > button[kind="primary"] {{
 # ─────────────────────────────────────────────
 # SESSION STATE
 # ─────────────────────────────────────────────
-for k in ["cp_farm", "cp_doi", "cp_lo"]:
+# INITIALIZE SESSION STATE
+# ─────────────────────────────────────────────
+for k in ["cp_farm", "cp_doi", "cp_lo", "flt_farm_cv", "flt_doi_cv", "flt_lo_cv", "flt_hm_cv"]:
     if k not in st.session_state:
-        st.session_state[k] = None
+        st.session_state[k] = [] if k.startswith("flt_") else None
+
+if "flt_search_cv" not in st.session_state:
+    st.session_state["flt_search_cv"] = ""
 
 def clear_all():
     st.session_state.cp_farm = st.session_state.cp_doi = st.session_state.cp_lo = None
