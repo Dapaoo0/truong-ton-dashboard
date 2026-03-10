@@ -110,8 +110,8 @@ with st.sidebar:
         lambda f: f" ({f})" if "," in f else "")
     doi_labels = dict(zip(doi_df["doi_code"], doi_df["label"]))
     sel_dois = st.multiselect("Đội", doi_df["doi_code"].tolist(),
-                              format_func=lambda x: doi_labels.get(x, x),
-                              default=[], key="doi_cp", help="Để trống = tất cả")
+                               format_func=lambda x: doi_labels.get(x, x),
+                               default=[], key="doi_cp", help="Để trống = tất cả")
     show_ht = st.checkbox("Bao gồm công hỗ trợ", value=True, key="ht_cp")
 
     st.markdown("---")
@@ -689,7 +689,7 @@ def pagination_controls(total_rows, page_key, page_size=PAGE_SIZE):
             st.rerun()
     with col_page:
         jump = st.number_input("Trang", min_value=1, max_value=total_pages,
-                               jump=page + 1, step=1, key=f"jump_{page_key}",
+                               value=page + 1, step=1, key=f"jump_{page_key}",
                                label_visibility="collapsed")
         if jump - 1 != page:
             st.session_state[page_key] = jump - 1
