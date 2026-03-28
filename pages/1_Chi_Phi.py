@@ -110,8 +110,8 @@ with st.sidebar:
         lambda f: f" ({f})" if "," in f else "")
     doi_labels = dict(zip(doi_df["doi_code"], doi_df["label"]))
     sel_dois = st.multiselect("Đội", doi_df["doi_code"].tolist(),
-                               format_func=lambda x: doi_labels.get(x, x),
-                               default=[], key="doi_cp", help="Để trống = tất cả")
+                              format_func=lambda x: doi_labels.get(x, x),
+                              default=[], key="doi_cp", help="Để trống = tất cả")
     show_ht = st.checkbox("Bao gồm công hỗ trợ", value=True, key="ht_cp")
 
     st.markdown("---")
@@ -597,14 +597,14 @@ if st.session_state.cp_doi:
 st.markdown("---")
 
 # ═════════════════════════════════════════════
-# SECTION 4: CƠ CẤU — Sunburst
+# SECTION 4: CƠ CẤU — Treemap
 # ═════════════════════════════════════════════
 section_header("Cơ cấu chi phí chi tiết",
-               "click mảnh để zoom · click giữa để quay lại")
+               "click vào ô để zoom xuống nhánh chi tiết · click tiêu đề phía trên hình để quay lại")
 
-SB_COLORS = [GRN, BLU, C["purple"], AMB, C["red"],
-             "#79C0FF", "#A5F3B0", "#FCD34D", "#F97583", "#BC8CFF",
-             "#58A6FF", "#3FB950", "#F0A800", "#8B949E", "#E6EDF3"]
+TREEMAP_COLORS = [GRN, BLU, C["purple"], AMB, C["red"],
+                  "#79C0FF", "#A5F3B0", "#FCD34D", "#F97583", "#BC8CFF",
+                  "#58A6FF", "#3FB950", "#F0A800", "#8B949E", "#E6EDF3"]
 col1, col2 = st.columns(2)
 
 with col1:
@@ -612,16 +612,16 @@ with col1:
     dc_sb["thanh_tien"] = pd.to_numeric(dc_sb["thanh_tien"], errors="coerce").fillna(0)
     dc_sb = dc_sb[dc_sb["thanh_tien"] > 0]
     if not dc_sb.empty:
-        fig_sb_c = px.sunburst(dc_sb, path=["farm_code", "doi_code", "cong_doan"],
-                               values="thanh_tien", color_discrete_sequence=SB_COLORS)
+        fig_sb_c = px.treemap(dc_sb, path=["farm_code", "doi_code", "cong_doan"],
+                              values="thanh_tien", color_discrete_sequence=TREEMAP_COLORS)
         fig_sb_c.update_traces(
             textfont=dict(size=11),
             hovertemplate="<b>%{label}</b><br>%{value:,.0f} VND<br>"
-                          "%{percentParent} của %{parent}<extra></extra>",
-            insidetextorientation="radial")
+                          "%{percentParent} của %{parent}<extra></extra>")
         fig_sb_c.update_layout(
             title=dict(text="Chi phí Công: Farm → Đội → Công đoạn",
-                       font=dict(size=12, color=TM)))
+                       font=dict(size=12, color=TM)),
+            margin=dict(t=40, l=5, r=5, b=5))
         apply_plotly_style(fig_sb_c, 420)
         chart_or_table(fig_sb_c, dc_sb.groupby(["farm_code","doi_code","cong_doan"])["thanh_tien"].sum().reset_index().rename(
             columns={"farm_code":"Farm","doi_code":"Đội","cong_doan":"Công đoạn","thanh_tien":"Chi phí (VND)"}),
@@ -634,16 +634,16 @@ with col2:
     dv_sb["thanh_tien"] = pd.to_numeric(dv_sb["thanh_tien"], errors="coerce").fillna(0)
     dv_sb = dv_sb[dv_sb["thanh_tien"] > 0]
     if not dv_sb.empty:
-        fig_sb_v = px.sunburst(dv_sb, path=["farm_code", "lo_code", "loai_vat_tu"],
-                               values="thanh_tien", color_discrete_sequence=SB_COLORS[::-1])
+        fig_sb_v = px.treemap(dv_sb, path=["farm_code", "lo_code", "loai_vat_tu"],
+                              values="thanh_tien", color_discrete_sequence=TREEMAP_COLORS[::-1])
         fig_sb_v.update_traces(
             textfont=dict(size=11),
             hovertemplate="<b>%{label}</b><br>%{value:,.0f} VND<br>"
-                          "%{percentParent} của %{parent}<extra></extra>",
-            insidetextorientation="radial")
+                          "%{percentParent} của %{parent}<extra></extra>")
         fig_sb_v.update_layout(
             title=dict(text="Chi phí Vật tư: Farm → Lô → Loại vật tư",
-                       font=dict(size=12, color=TM)))
+                       font=dict(size=12, color=TM)),
+            margin=dict(t=40, l=5, r=5, b=5))
         apply_plotly_style(fig_sb_v, 420)
         chart_or_table(fig_sb_v, dv_sb.groupby(["farm_code","lo_code","loai_vat_tu"])["thanh_tien"].sum().reset_index().rename(
             columns={"farm_code":"Farm","lo_code":"Lô","loai_vat_tu":"Loại VT","thanh_tien":"Chi phí (VND)"}),
