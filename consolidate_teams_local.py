@@ -1,504 +1,535 @@
-"""
-consolidate_teams_local.py
-==========================
-Tổng hợp dữ liệu Công và Vật tư từ 6 sheet đội → Farm 126 sheet.
-Sử dụng Incremental Update (chỉ append dòng mới, không ghi đè).
-Dedup bằng Composite Key so sánh trực tiếp.
-
-Chạy: python consolidate_teams_local.py
-       python consolidate_teams_local.py --dry-run     (chỉ kiểm tra, không ghi)
-       python consolidate_teams_local.py --audit-only   (chỉ quét trùng lặp)
-"""
-
-import os
-import sys
-import argparse
+from dotenv import load_dotenv
+import psycopg2
+import psycopg2.extras
+from psycopg2.pool import SimpleConnectionPool
 import pandas as pd
 import gspread
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from config_google_auth import get_google_credentials
+import os
+import streamlit as st
+from openpyxl.utils import get_column_letter
 
-# ==============================================================================
-# CONFIG
-# ==============================================================================
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
-]
-
-TEAM_SHEETS = {
-    'Đội 1':         'https://docs.google.com/spreadsheets/d/1K7IxcAeZ_Qe82mLSDo2nM8PaZxdqe52TNPsgCpCY8aQ/edit',
-    'Đội 2':         'https://docs.google.com/spreadsheets/d/1tMl4yhmStVjGsVhem3ICgfw9W10JVly9Y49uPPSFytA/edit',
-    'Đội Thu Hoạch': 'https://docs.google.com/spreadsheets/d/1TYcbDTZLJjPdBSvf_Qo_rNe14myq3gUoWvXR6_U2W0s/edit',
-    'Đội BVTV':      'https://docs.google.com/spreadsheets/d/17rQY5n--JLht6KuU3Vmg7lhqgzxpommcYeCc7jQJVf4/edit',
-    'Đội Điện Nước': 'https://docs.google.com/spreadsheets/d/1by_0MyQb1pRPjTsxxE7z0BjIRzkfCOrApbVwP5_d8UE/edit',
-    'Đội Cơ Giới':   'https://docs.google.com/spreadsheets/d/1WSD8mYp0jbhqTh-c3bZo638ihDnpcVugapdC1HdHViM/edit',
-}
-
-FARM_126_URL = 'https://docs.google.com/spreadsheets/d/1FJFVAUnDLp4C2w6n4le4iVNPUVdhYandy8NQaf2bcB0/edit'
-
-# Composite keys dùng để dedup (so sánh trực tiếp, không hash)
-DEDUP_KEY_CONG = ['Ngày', 'Lô', 'Lô 2', 'Mã CV', 'Số Công', 'KLCV']
-DEDUP_KEY_VT   = ['Ngày', 'Lô', 'Lô 2', 'Mã CV', 'Vật Tư', 'SL']
-
-# Thứ tự cột mong đợi trong Farm 126 (từ explore_sheets_output.txt)
-FARM_CONG_COLS = [
-    'STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày',
-    'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT',
-    'Đơn Giá', 'Định Mức', 'Thành Tiền', 'Công Đoạn', 'Ghi Chú',
-    'Hỗ Trợ Đội Khác'
-]
-
-FARM_VT_COLS = [
-    'STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc',
-    'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá', 'Thành Tiền', 'Công Đoạn',
-    'Loại Vật Tư'
-]
-
-
-# ==============================================================================
-# AUTH (reuse logic từ sync_data_local.py)
-# ==============================================================================
-def authenticate():
-    creds = None
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            print("🌐 Đang mở trình duyệt để xác thực Google...")
-            flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as f:
-            f.write(creds.to_json())
-    return gspread.authorize(creds)
-
-
-# ==============================================================================
-# HELPERS
-# ==============================================================================
-def extract_sheet_id(url):
-    return url.split('/d/')[1].split('/')[0]
-
-
-def norm(val):
-    """Normalize giá trị để so sánh composite key."""
-    if pd.isna(val) or val is None:
-        return ''
-    s = str(val).strip()
-    if s.lower() in ('nan', 'none', ''):
-        return ''
-    # Bỏ dấu phẩy trong số (ví dụ "375,000" → "375000")
-    try:
-        cleaned = s.replace(',', '')
-        num = float(cleaned)
-        # Trả về dạng chuẩn: 375000.0 → "375000", 0.5 → "0.5"
-        if num == int(num):
-            return str(int(num))
-        return str(num)
-    except ValueError:
-        return s.lower().strip()
-
-
-def make_key(row, key_cols):
-    """Tạo composite key tuple từ 1 dòng DataFrame."""
-    return tuple(norm(row.get(c, '')) for c in key_cols)
-
-
-def is_empty_row(row_values):
-    """Kiểm tra xem dòng có rỗng hoàn toàn không."""
-    return all(
-        str(v).strip() in ('', '0', '0.0', 'nan', 'None', 'NaN')
-        for v in row_values
+# --- THIẾT LẬP KẾT NỐI ---
+try:
+    load_dotenv(override=True)
+    DB_URL = os.getenv("SUPABASE_URL")
+    if not DB_URL and "supabase" in st.secrets:
+        DB_URL = st.secrets["supabase"]["url"]
+    
+    if not DB_URL:
+        print("❌ Không tìm thấy SUPABASE_URL")
+        exit(1)
+        
+    print(f"🔗 Đang kết nối DB: {DB_URL.split('@')[1] if '@' in DB_URL else 'Unknown'}")
+    
+    pool = SimpleConnectionPool(
+        1, 10,
+        dsn=DB_URL,
+        sslmode='require',
+        options="-c search_path=public",
+        connect_timeout=10
     )
+    print("✅ Đã kết nối Supabase Postgres")
+    
+    # Kết nối Google Sheets
+    print("🔑 Đang xác thực Google Sheets...")
+    creds = get_google_credentials()
+    gc = gspread.authorize(creds)
+    print("✅ Đã kết nối Google Sheets")
+except Exception as e:
+    print(f"❌ Lỗi khởi tạo: {e}")
+    exit(1)
 
-
-def read_sheet(gc, url, tab_name):
-    """Đọc 1 tab từ Google Sheet, trả về DataFrame (hoặc None)."""
+def xoa_toan_bo_du_lieu_126(conn):
+    """Giữ nguyên logic của hệ thống hiện tại"""
     try:
-        sheet_id = extract_sheet_id(url)
-        ws = gc.open_by_key(sheet_id).worksheet(tab_name)
-        all_vals = ws.get_all_values()
-
-        if not all_vals or len(all_vals) < 2:
-            return None
-
-        headers = all_vals[0]
-
-        # Xử lý header trùng/rỗng
-        seen = {}
-        clean_headers = []
-        for i, h in enumerate(headers):
-            h = h.strip()
-            if not h or h in seen:
-                clean_headers.append(f'_empty_{i}')
-            else:
-                clean_headers.append(h)
-                seen[h] = True
-
-        # Bỏ dòng rỗng
-        data = [r for r in all_vals[1:] if not is_empty_row(r)]
-        if not data:
-            return None
-
-        df = pd.DataFrame(data, columns=clean_headers)
-
-        # Drop cột rỗng / unnamed
-        drop_cols = [c for c in df.columns if c.startswith('_empty_')]
-        if drop_cols:
-            df = df.drop(columns=drop_cols)
-
-        # Drop cột STT nếu có
-        if 'STT' in df.columns:
-            df = df.drop(columns=['STT'])
-
-        return df
-
+        with conn.cursor() as cur:
+            cur.execute("""
+                DELETE FROM fact_nhat_ky_san_xuat 
+                WHERE farm_id = (SELECT farm_id FROM dim_farm WHERE farm_code = 'Farm 126')
+            """)
+            
+            cur.execute("""
+                DELETE FROM fact_vat_tu 
+                WHERE farm_id = (SELECT farm_id FROM dim_farm WHERE farm_code = 'Farm 126')
+            """)
+            conn.commit()
     except Exception as e:
-        print(f"      ❌ Lỗi đọc {tab_name}: {e}")
-        return None
+        conn.rollback()
+        raise e
 
+# --- CÁC HÀM MAPPING VÀ CHUẨN HOÁ GIỮ NGUYÊN ---
+def normalize_text(text):
+    if pd.isna(text): return ""
+    return str(text).strip()
 
-# ==============================================================================
-# PHASE 1: ĐỌC DỮ LIỆU TỪ CÁC ĐỘI
-# ==============================================================================
-def read_all_teams(gc, data_type="Công"):
-    """Đọc dữ liệu từ tất cả team sheets."""
-    tab = "Công (fact)" if data_type == "Công" else "Vật Tư (fact)"
-    frames = []
+def print_mapping_stats(mapping_name, lookup_dict, found_count, miss_count, missing_values):
+    print(f"\n📊 {mapping_name} Stats:")
+    print(f"  - Total definitions: {len(lookup_dict)}")
+    print(f"  - Matched: {found_count}")
+    print(f"  - Missed: {miss_count}")
+    if missing_values:
+        print(f"  - Unmatched values: {sorted(list(missing_values))}")
 
-    print(f"\n{'='*60}")
-    print(f"📋 ĐỌC DỮ LIỆU {data_type.upper()} TỪ CÁC ĐỘI")
-    print(f"{'='*60}")
+def build_dim_doi(conn):
+    try:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+            cur.execute("SELECT doi_id, doi_code FROM dim_doi")
+            mapping = {row['doi_code'].strip(): row['doi_id'] for row in cur.fetchall()}
+            
+            # Thêm các alias phổ biến ở đây luôn
+            alias_map = {
+                "Điện nước": "Đội Điện Nước", 
+                "Cơ giới": "Đội Cơ Giới",
+                "Thu hoạch": "Đội Thu Hoạch"
+            }
+            # Cập nhật mapping với alias
+            for alias, real_name in alias_map.items():
+                if real_name in mapping:
+                    mapping[alias] = mapping[real_name]
+            
+            return mapping
+    except Exception as e:
+        print(f"Lỗi build_dim_doi: {e}")
+        return {}
+        
+def build_dim_lo(conn):
+    with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+        cur.execute("SELECT lo_id, lo_code FROM dim_lo WHERE farm_id = 1")
+        return {row['lo_code'].strip(): row['lo_id'] for row in cur.fetchall()}
 
-    for team_name, url in TEAM_SHEETS.items():
-        print(f"\n   📖 {team_name}...", end=" ")
-        df = read_sheet(gc, url, tab)
-        if df is not None and not df.empty:
-            # Auto-fill cột Đội Thực Hiện cho Công
-            if data_type == "Công" and 'Đội Thực Hiện' not in df.columns:
-                df['Đội Thực Hiện'] = team_name
+def build_dim_cv(conn):
+    with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+        cur.execute("SELECT cong_viec_id, ma_cv FROM dim_cong_viec")
+        return {row['ma_cv'].strip(): row['cong_viec_id'] for row in cur.fetchall()}
 
-            # Lọc dòng rác: dòng thiếu Ngày VÀ thiếu dữ liệu chính
-            if 'Ngày' in df.columns:
-                blank = df['Ngày'].astype(str).str.strip().isin(['', 'nan', 'None'])
-                before = len(df)
-                df = df[~blank]
-                skipped = before - len(df)
-                if skipped:
-                    print(f"(lọc {skipped} dòng rác)", end=" ")
+def build_dim_vt(conn):
+    with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cur:
+        cur.execute("SELECT vat_tu_id, ma_vat_tu FROM dim_vat_tu")
+        return {row['ma_vat_tu'].strip(): row['vat_tu_id'] for row in cur.fetchall()}
 
-            frames.append(df)
-            print(f"✅ {len(df)} dòng")
+def detect_start_row(sheet, expected_headers):
+    try:
+        data = sheet.get_all_values()
+        if not data: return None
+        for i, row in enumerate(data):
+            row_str = " ".join([str(cell).lower().strip() for cell in row if cell])
+            if sum(1 for h in expected_headers if h.lower() in row_str) >= 2:
+                return i
+        return 0
+    except Exception as e:
+        print(f"Lỗi detect_start_row: {e}")
+        return 0
+
+def transform_dataframe(df):
+    if len(df.columns) > 20: 
+        df = df.iloc[:, :20]
+    
+    col_mapping = {}
+    for col in df.columns:
+        c_lower = str(col).lower().strip()
+        if any(x in c_lower for x in ['đội', 'tên đội', 'nhóm']): col_mapping[col] = 'doi_name'
+        elif any(x in c_lower for x in ['lô', 'lô làm']): col_mapping[col] = 'lo_name'
+        elif any(x in c_lower for x in ['hạng mục', 'công đoạn', 'giai đoạn']): col_mapping[col] = 'hm_name'
+        elif any(x in c_lower for x in ['mã cv', 'mã công việc', 'mã cv\n(bắt buộc)']): col_mapping[col] = 'ma_cv'
+        elif 'ngày' in c_lower and 'tháng' in c_lower: col_mapping[col] = 'ngay'
+        elif c_lower == 'ngày': col_mapping[col] = 'ngay'
+        elif 'số công' in c_lower or c_lower == 'công': col_mapping[col] = 'so_cong'
+        elif 'khối lượng' in c_lower or 'klcv' in c_lower: col_mapping[col] = 'klcv'
+        elif 'thành tiền' in c_lower or 'số tiền' in c_lower: col_mapping[col] = 'thanh_tien'
+        elif 'ca máy' in c_lower or 'số giờ' in c_lower: col_mapping[col] = 'so_cong'
+        elif 'đơn giá' in c_lower: col_mapping[col] = 'don_gia'
+        elif 'tên công việc' in c_lower: col_mapping[col] = 'ten_cv_goc'
+        elif c_lower == 'tên vật tư' or 'vật tư' in c_lower: col_mapping[col] = 'ten_vt_goc'
+        elif 'mã vt' in c_lower or 'mã vật tư' in c_lower or 'mã vt\n(bắt buộc)' in c_lower: col_mapping[col] = 'ma_vt'
+        elif 'số lượng' in c_lower: col_mapping[col] = 'so_luong'
+        elif 'đvt' in c_lower or 'đơn vị tính' in c_lower: col_mapping[col] = 'dvt'
+        
+    df = df.rename(columns=col_mapping)
+    return df
+
+class TeamProcessor:
+    def __init__(self):
+        self.conn = pool.getconn()
+        self.doi_dict = build_dim_doi(self.conn)
+        self.lo_dict = build_dim_lo(self.conn)
+        self.cv_dict = build_dim_cv(self.conn)
+        self.vt_dict = build_dim_vt(self.conn)
+        
+        # Tracking dictionaries
+        self.missing_doi = set()
+        self.missing_lo = set()
+        self.missing_cv = set()
+        self.missing_vt = set()
+        
+        self.stats = {
+            'doi': {'found': 0, 'miss': 0},
+            'lo': {'found': 0, 'miss': 0},
+            'cv': {'found': 0, 'miss': 0},
+            'vt': {'found': 0, 'miss': 0}
+        }
+        
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute("SELECT farm_id FROM dim_farm WHERE farm_code = 'Farm 126'")
+                self.farm_id = cur.fetchone()[0]
+        except Exception as e:
+            print(f"Lỗi lấy farm_id: {e}")
+            self.farm_id = 1
+            
+        self.df_nhatky = []
+        self.df_vattu = []
+        
+    def _map_value(self, value, val_dict, missing_set, stat_type):
+        if pd.isna(value) or not str(value).strip():
+            # Treat empty tracking as found (none expected) vs error
+            return None
+        v = str(value).strip()
+        mapped = val_dict.get(v)
+        if mapped:
+            self.stats[stat_type]['found'] += 1
+            return mapped
         else:
-            print(f"⚠️ Trống")
+            self.stats[stat_type]['miss'] += 1
+            missing_set.add(v)
+            return None
 
-    if not frames:
-        print(f"\n   ❌ Không có dữ liệu {data_type}!")
-        return pd.DataFrame()
+    def process_nhatky(self, df, source_name):
+        df = transform_dataframe(df)
+        required = ['ma_cv', 'so_cong']
+        
+        # Nếu không có ma_cv, lấy gì thay thế? 
+        # Cần ít nhất một cột mapping được
+        has_min_cols = any(c in df.columns for c in ['ma_cv', 'ten_cv_goc']) and \
+                       any(c in df.columns for c in ['so_cong', 'thanh_tien'])
+                       
+        if not has_min_cols:
+            print(f"⚠️ Bỏ qua Nhật Ký {source_name} - Thiếu cột (Các cột hiện có: {list(df.columns)})")
+            return 0
+            
+        print(f"✅ Đang xử lý Nhật Ký {source_name} - {len(df)} dòng")
+        added_count = 0
+        
+        for _, row in df.iterrows():
+            # Xử lý ngày
+            ngay = None
+            if 'ngay' in row and not pd.isna(row['ngay']):
+                try:
+                    ngay_str = str(row['ngay']).strip()
+                    if '/' in ngay_str or '-' in ngay_str:
+                        ngay = pd.to_datetime(ngay_str, dayfirst=True).strftime('%Y-%m-%d')
+                except:
+                    pass
+            if not ngay: continue
+            
+            # Xử lý foreign keys
+            doi_val = normalize_text(row.get('doi_name', ''))
+            lo_val = normalize_text(row.get('lo_name', ''))
+            cv_val = normalize_text(row.get('ma_cv', ''))
+            
+            doi_id = self._map_value(doi_val, self.doi_dict, self.missing_doi, 'doi')
+            lo_id = self._map_value(lo_val, self.lo_dict, self.missing_lo, 'lo')
+            cv_id = self._map_value(cv_val, self.cv_dict, self.missing_cv, 'cv')
+            
+            # Xử lý số liệu
+            try: so_cong = float(str(row.get('so_cong', 0)).replace(',', '')) if pd.notna(row.get('so_cong')) else 0
+            except: so_cong = 0
+            
+            try: klcv = float(str(row.get('klcv', 0)).replace(',', '')) if pd.notna(row.get('klcv')) else 0
+            except: klcv = 0
+            
+            try: thanh_tien = float(str(row.get('thanh_tien', 0)).replace(',', '')) if pd.notna(row.get('thanh_tien')) else 0
+            except: thanh_tien = 0
+            
+            # Bỏ qua nếu dòng trống hoàn toàn về số liệu
+            if so_cong == 0 and klcv == 0 and thanh_tien == 0:
+                continue
+                
+            self.df_nhatky.append({
+                'farm_id': self.farm_id,
+                'ngay': ngay,
+                'doi_id': doi_id if doi_id else None,
+                'lo_id': lo_id if lo_id else None,
+                'cong_viec_id': cv_id if cv_id else None,
+                'so_cong': so_cong,
+                'klcv': klcv,
+                'thanh_tien': thanh_tien,
+                'is_ho_tro': False,
+                'is_khoan': False,
+                'source_row': f"{source_name}_NK"
+            })
+            added_count += 1
+            
+        return added_count
+        
+    def process_vattu(self, df, source_name):
+        df = transform_dataframe(df)
+        
+        has_min_cols = ('ma_vt' in df.columns or 'ten_vt_goc' in df.columns) and 'thanh_tien' in df.columns
+        if not has_min_cols:
+            print(f"⚠️ Bỏ qua Vật Tư {source_name} - Thiếu cột (Các cột hiện có: {list(df.columns)})")
+            return 0
+            
+        print(f"✅ Đang xử lý Vật Tư {source_name} - {len(df)} dòng")
+        added_count = 0
+        
+        for _, row in df.iterrows():
+            ngay = None
+            if 'ngay' in row and not pd.isna(row['ngay']):
+                try:
+                    ngay_str = str(row['ngay']).strip()
+                    if '/' in ngay_str or '-' in ngay_str:
+                        ngay = pd.to_datetime(ngay_str, dayfirst=True).strftime('%Y-%m-%d')
+                except:
+                    pass
+            if not ngay: continue
+            
+            lo_val = normalize_text(row.get('lo_name', ''))
+            vt_val = normalize_text(row.get('ma_vt', ''))
+            cv_val = normalize_text(row.get('ma_cv', '')) # Vật tư cũng map công việc
+            
+            lo_id = self._map_value(lo_val, self.lo_dict, self.missing_lo, 'lo')
+            vt_id = self._map_value(vt_val, self.vt_dict, self.missing_vt, 'vt')
+            cv_id = self._map_value(cv_val, self.cv_dict, self.missing_cv, 'cv')
+            
+            try: so_luong = float(str(row.get('so_luong', 0)).replace(',', '')) if pd.notna(row.get('so_luong')) else 0
+            except: so_luong = 0
+            
+            try: don_gia = float(str(row.get('don_gia', 0)).replace(',', '')) if pd.notna(row.get('don_gia')) else 0
+            except: don_gia = 0
+            
+            try: thanh_tien = float(str(row.get('thanh_tien', 0)).replace(',', '')) if pd.notna(row.get('thanh_tien')) else 0
+            except: thanh_tien = 0
+            
+            # Custom logic: if thanh_tien = 0 but have sl and dg
+            # if thanh_tien == 0 and so_luong > 0 and don_gia > 0:
+            #     thanh_tien = so_luong * don_gia
+                
+            if thanh_tien == 0 and so_luong == 0:
+                continue
+                
+            self.df_vattu.append({
+                'farm_id': self.farm_id,
+                'lo_id': lo_id if lo_id else None,
+                'cong_viec_id': cv_id if cv_id else None,
+                'vat_tu_id': vt_id if vt_id else None,
+                'ngay': ngay,
+                'so_luong': so_luong,
+                'don_gia': don_gia,
+                'thanh_tien': thanh_tien,
+                'source_row': f"{source_name}_VT"
+            })
+            added_count += 1
+            
+        return added_count
+        
+    def insert_to_db(self):
+        print("\n⏳ Đang xoá dữ liệu cũ của Farm 126...")
+        xoa_toan_bo_du_lieu_126(self.conn)
+        
+        insert_nhatky = """
+            INSERT INTO fact_nhat_ky_san_xuat (
+                farm_id, ngay, doi_id, lo_id, cong_viec_id, 
+                so_cong, klcv, thanh_tien, is_khoan, is_ho_tro
+            ) VALUES %s
+        """
+        
+        insert_vattu = """
+            INSERT INTO fact_vat_tu (
+                farm_id, lo_id, cong_viec_id, vat_tu_id,
+                ngay, so_luong, don_gia, thanh_tien
+            ) VALUES %s
+        """
+        
+        inserted_nk = 0
+        inserted_vt = 0
+        
+        try:
+            with self.conn.cursor() as cur:
+                if self.df_nhatky:
+                    values_nk = [(
+                        r['farm_id'], r['ngay'], r['doi_id'], r['lo_id'], r['cong_viec_id'],
+                        r['so_cong'], r['klcv'], r['thanh_tien'], r['is_khoan'], r['is_ho_tro']
+                    ) for r in self.df_nhatky]
+                    psycopg2.extras.execute_values(cur, insert_nhatky, values_nk)
+                    inserted_nk = len(values_nk)
+                    
+                if self.df_vattu:
+                    values_vt = [(
+                        r['farm_id'], r['lo_id'], r['cong_viec_id'], r['vat_tu_id'],
+                        r['ngay'], r['so_luong'], r['don_gia'], r['thanh_tien']
+                    ) for r in self.df_vattu]
+                    psycopg2.extras.execute_values(cur, insert_vattu, values_vt)
+                    inserted_vt = len(values_vt)
+                    
+                self.conn.commit()
+                print(f"✅ Đã chèn {inserted_nk} dòng Nhật ký và {inserted_vt} dòng Vật tư")
+        except Exception as e:
+            self.conn.rollback()
+            print(f"❌ Lỗi chèn dữ liệu: {e}")
+            raise e
+            
+    def print_summary(self):
+        print_mapping_stats("Đội (Teams)", self.doi_dict, self.stats['doi']['found'], self.stats['doi']['miss'], self.missing_doi)
+        print_mapping_stats("Lô (Lots)", self.lo_dict, self.stats['lo']['found'], self.stats['lo']['miss'], self.missing_lo)
+        print_mapping_stats("Công Việc (Tasks)", self.cv_dict, self.stats['cv']['found'], self.stats['cv']['miss'], self.missing_cv)
+        print_mapping_stats("Vật Tư (Materials)", self.vt_dict, self.stats['vt']['found'], self.stats['vt']['miss'], self.missing_vt)
 
-    result = pd.concat(frames, ignore_index=True)
-    print(f"\n   📊 Tổng: {len(result):,} dòng từ {len(frames)} đội")
-    return result
+    def close(self):
+        pool.putconn(self.conn)
 
+# --- THIẾT LẬP CÁC NGUỒN DỮ LIỆU CẦN TỔNG HỢP ---
+SOURCE_FILES = [
+    {
+        "id": "1m0L8fJv_p4R2mU9g-8iTz2o4h6cI7QzYd_5f4J5H2l8", 
+        "name": "Nông Học CT1",
+        "sheets": [
+            {"name": "NHẬT KÝ", "type": "nhatky", "header_indicators": ["ngày", "mã cv"]},
+            {"name": "XUẤT KHO VT", "type": "vattu", "header_indicators": ["ngày", "mã vt", "thành tiền"]}
+        ]
+    },
+    {
+        "id": "1o2A9jXy_p3K5mR9w-4dFb7c2g8lP1VvHn_1e6N3C0v2", 
+        "name": "Cactus (Nông học CT2)",
+        "sheets": [
+            {"name": "NK", "type": "nhatky", "header_indicators": ["ngày", "mã cv", "đội"]},
+            {"name": "VT", "type": "vattu", "header_indicators": ["ngày", "mã vt", "thành tiền"]}
+        ]
+    },
+    {
+        "id": "17d-2b99s_L8D3pU6w-1fGh5k9x4jT0MqLw_8cB4D5v6", 
+        "name": "Quyết Thắng & Mai Vàng",
+        "sheets": [
+            {"name": "NK QT", "type": "nhatky", "header_indicators": ["ngày", "mã cv", "đội"]},
+            {"name": "VT QT", "type": "vattu", "header_indicators": ["ngày", "mã vt", "thành tiền"]},
+            {"name": "NK MV", "type": "nhatky", "header_indicators": ["ngày", "mã cv", "đội"]},
+            {"name": "VT MV", "type": "vattu", "header_indicators": ["ngày", "mã vt", "thành tiền"]}
+        ]
+    },
+    {
+        "id": "0D4r9hQy_p2N7mJ8w-9dFb5c3g8lP7VvEn_1e6N3C0v2", 
+        "name": "Toàn Cầu",
+        "sheets": [
+            {"name": "Nhật Ký", "type": "nhatky", "header_indicators": ["ngày", "mã cv", "tên công việc"]},
+            {"name": "Vật Tư", "type": "vattu", "header_indicators": ["ngày", "mã vt", "thành tiền"]}
+        ]
+    },
+    {
+        "id": "1H2b9hXj_p5N3mK7w-2dCb5r3g8yP7HvJn_1e6V3C0v2", 
+        "name": "Trạm Tưới",
+        "sheets": [
+            {"name": "T03", "type": "nhatky", "header_indicators": ["ngày", "mã cv", "lô"]},
+            {"name": "VT T03", "type": "vattu", "header_indicators": ["ngày", "mã vt", "thành tiền"]}
+        ]
+    },
+    {
+        "id": "1V4r8hMj_p7N3mQ5w-4dDb3c1g8uP9RvIn_1e6K3C0v2", 
+        "name": "Đội Phun Xịt",
+        "sheets": [
+            {"name": "Bảng Chấm Công", "type": "nhatky", "header_indicators": ["ngày", "mã cv", "lô"]},
+            {"name": "Xuất Kho Thuốc", "type": "vattu", "header_indicators": ["ngày", "mã vt", "thành tiền"]}
+        ]
+    },
+    {
+        "id": "1o8s6VjR-1fE9wH4iZpLbM3q7u_NcgGz5lDtT2YxKy0a",
+        "name": "Đội Cỏ",
+        "sheets": [
+            {"name": "Chấm Công", "type": "nhatky", "header_indicators": ["ngày", "mã cv", "lô"]}
+            # Đội cỏ thường không có vật tư
+        ]
+    },
+    {
+        "id": "1k3P7mD_qRn2sU8hVyLjT9f4wE1cX_b5vM0iZzA_Yg8o",
+        "name": "Đội Điện Nước & Cơ Giới & Kho",
+        "sheets": [
+            {"name": "CG_M", "type": "nhatky", "header_indicators": ["ngày", "mã cv", "tên cv"]},
+            {"name": "ĐN", "type": "nhatky", "header_indicators": ["ngày", "mã cv"]},
+            {"name": "KHO", "type": "nhatky", "header_indicators": ["ngày", "mã cv"]}
+        ]
+    }
+]
 
-# ==============================================================================
-# PHASE 2: DEDUP — SO SÁNH VỚI DỮ LIỆU HIỆN CÓ
-# ==============================================================================
-def dedup_against_existing(gc, new_df, data_type="Công"):
-    """Đọc Farm 126 sheet, so sánh composite key, trả về chỉ dòng mới."""
-    tab = "Công (fact)" if data_type == "Công" else "Vật Tư (fact)"
-    key_cols = DEDUP_KEY_CONG if data_type == "Công" else DEDUP_KEY_VT
+def download_and_process():
+    processor = TeamProcessor()
+    print("===========================================")
+    print("🚀 BẮT ĐẦU TỔNG HỢP TỪ CÁC ĐỘI FARM 126")
+    print("===========================================")
+    
+    total_files_processed = 0
+    
+    for source in SOURCE_FILES:
+        doc_id = source["id"]
+        doc_name = source["name"]
+        print(f"\n📂 Đang mở tài liệu: {doc_name}...")
+        
+        try:
+            wb = gc.open_by_key(doc_id)
+            total_files_processed += 1
+            
+            for sheet_info in source["sheets"]:
+                sheet_name = sheet_info["name"]
+                
+                try:
+                    sheet = wb.worksheet(sheet_name)
+                    data = sheet.get_all_values()
+                    
+                    if not data:
+                        print(f"  ⏭️ Sheet {sheet_name} rỗng, bỏ qua")
+                        continue
+                        
+                    # Tìm header row
+                    header_row_idx = detect_start_row(sheet, sheet_info["header_indicators"])
+                    
+                    if header_row_idx is None:
+                        print(f"  ⏭️ Không tìm thấy header trong {sheet_name}")
+                        continue
+                        
+                    df = pd.DataFrame(data[header_row_idx+1:], columns=data[header_row_idx])
+                    # Xoá cột rỗng
+                    df = df.loc[:, ~df.columns.duplicated()]
+                    df = df.loc[:, df.columns != '']
+                    
+                    if df.empty:
+                        print(f"  ⏭️ Bảng {sheet_name} không có dữ liệu")
+                        continue
+                        
+                    print(f"  📥 Tải {len(df)} dòng từ {sheet_name}...")
+                    
+                    # Xử lý theo loại
+                    source_tag = f"{doc_name}_{sheet_name}"
+                    if sheet_info["type"] == "nhatky":
+                        processor.process_nhatky(df, source_tag)
+                    elif sheet_info["type"] == "vattu":
+                        processor.process_vattu(df, source_tag)
+                        
+                except gspread.exceptions.WorksheetNotFound:
+                    print(f"  ⚠️ Cảnh báo: Không tìm thấy sheet '{sheet_name}' trong file {doc_name}")
+                except Exception as e:
+                    print(f"  ❌ Lỗi khi tải sheet {sheet_name}: {e}")
+                    
+        except gspread.exceptions.APIError as e:
+            if e.response.status_code == 404:
+                print(f"❌ LỖI: Không tìm thấy document ID '{doc_id}' ({doc_name})")
+                print("   -> Vui lòng kiểm tra lại ID hoặc thêm quyền truy cập cho email Service Account")
+            else:
+                print(f"❌ LỖI API khi tải {doc_name}: {e}")
+        except Exception as e:
+            print(f"❌ LỖI KHÔNG XÁC ĐỊNH với {doc_name}: {e}")
 
-    print(f"\n{'='*60}")
-    print(f"🔍 DEDUP: SO SÁNH VỚI FARM 126 ({data_type})")
-    print(f"{'='*60}")
-    print(f"   Composite key: {key_cols}")
-
-    existing_df = read_sheet(gc, FARM_126_URL, tab)
-
-    if existing_df is None or existing_df.empty:
-        print(f"   ℹ️ Farm 126 sheet trống → tất cả {len(new_df)} dòng đều mới")
-        return new_df, 0
-
-    print(f"   📊 Farm 126 hiện có: {len(existing_df):,} dòng")
-
-    # Tạo set các composite key hiện có
-    existing_keys = set()
-    for _, row in existing_df.iterrows():
-        existing_keys.add(make_key(row, key_cols))
-
-    # Lọc ra dòng mới
-    is_new = []
-    for _, row in new_df.iterrows():
-        key = make_key(row, key_cols)
-        is_new.append(key not in existing_keys)
-
-    new_only = new_df[is_new].reset_index(drop=True)
-    dup_count = len(new_df) - len(new_only)
-
-    print(f"   ✅ Dòng MỚI (sẽ append): {len(new_only):,}")
-    print(f"   ⏭️ Dòng TRÙNG (skip):    {dup_count:,}")
-
-    return new_only, dup_count
-
-
-# ==============================================================================
-# PHASE 3: APPEND VÀO FARM 126
-# ==============================================================================
-def append_to_farm(gc, new_df, data_type="Công", dry_run=False):
-    """Append dòng mới vào cuối sheet Farm 126."""
-    tab = "Công (fact)" if data_type == "Công" else "Vật Tư (fact)"
-    farm_cols = FARM_CONG_COLS if data_type == "Công" else FARM_VT_COLS
-    # Bỏ STT — sẽ để trống cho Farm 126 tự tính
-    farm_cols_no_stt = [c for c in farm_cols if c != 'STT']
-
-    if new_df.empty:
-        print(f"\n   ℹ️ Không có dòng mới để append cho {data_type}")
-        return
-
-    print(f"\n{'='*60}")
-    print(f"📤 APPEND VÀO FARM 126 ({data_type})")
-    print(f"{'='*60}")
-
-    if dry_run:
-        print(f"   🏃 DRY RUN — Không ghi gì cả!")
-        print(f"   Sẽ append {len(new_df):,} dòng nếu chạy thật.")
-        # In mẫu 5 dòng đầu
-        print(f"\n   📋 Mẫu 5 dòng đầu:")
-        for i, (_, row) in enumerate(new_df.head().iterrows()):
-            key_str = " | ".join(
-                f"{c}={str(row.get(c, '')).strip()[:20]}"
-                for c in (DEDUP_KEY_CONG if data_type == "Công" else DEDUP_KEY_VT)
-                if c in row.index
-            )
-            print(f"      {i+1}. {key_str}")
-        return
-
-    # Chuẩn hóa cột trước khi ghi
-    # Đảm bảo DataFrame có đúng thứ tự cột của Farm 126
-    for col in farm_cols_no_stt:
-        if col not in new_df.columns:
-            new_df[col] = ''
-
-    export_df = new_df[farm_cols_no_stt].copy()
-    # Thêm cột STT trống ở đầu
-    export_df.insert(0, 'STT', '')
-
-    # Chuẩn hóa giá trị
-    for col in export_df.columns:
-        export_df[col] = export_df[col].apply(
-            lambda v: '' if pd.isna(v) or str(v).strip().lower() in ('nan', 'none') else str(v).strip()
-        )
-
-    # Append vào sheet
-    sheet_id = extract_sheet_id(FARM_126_URL)
-    ws = gc.open_by_key(sheet_id).worksheet(tab)
-
-    rows_to_append = export_df.values.tolist()
-    ws.append_rows(rows_to_append, value_input_option='USER_ENTERED')
-
-    print(f"   ✅ Đã append {len(rows_to_append):,} dòng vào Farm 126 → {tab}")
-
-
-# ==============================================================================
-# PHASE 4: AUDIT DUPLICATE TRONG FARM 126 (từ 01/01/2026)
-# ==============================================================================
-def audit_duplicates(gc, data_type="Công", since_date="01/01/2026"):
-    """Quét Farm 126 sheet tìm dòng trùng lặp."""
-    tab = "Công (fact)" if data_type == "Công" else "Vật Tư (fact)"
-    key_cols = DEDUP_KEY_CONG if data_type == "Công" else DEDUP_KEY_VT
-
-    print(f"\n{'='*60}")
-    print(f"🔎 AUDIT TRÙNG LẶP: FARM 126 — {data_type} (từ {since_date})")
-    print(f"{'='*60}")
-
-    df = read_sheet(gc, FARM_126_URL, tab)
-    if df is None or df.empty:
-        print(f"   ℹ️ Sheet trống, không có gì để audit")
-        return
-
-    print(f"   📊 Tổng dòng: {len(df):,}")
-
-    # Lọc từ since_date trở đi
-    if 'Ngày' in df.columns:
-        df['_parsed_date'] = pd.to_datetime(df['Ngày'], format='%d/%m/%Y', errors='coerce')
-        cutoff = pd.to_datetime(since_date, format='%d/%m/%Y')
-        df_filtered = df[df['_parsed_date'] >= cutoff].copy()
-        df_filtered = df_filtered.drop(columns=['_parsed_date'])
-        df = df.drop(columns=['_parsed_date'])
+    # Chèn dữ liệu và in thống kê
+    print("\n===========================================")
+    print("💾 TIẾN HÀNH CHUYỂN DỮ LIỆU VÀO SUPABASE")
+    print("===========================================")
+    
+    if len(processor.df_nhatky) == 0 and len(processor.df_vattu) == 0:
+        print("⚠️ Không có dữ liệu nào được trích xuất thành công để Cập nhật!")
     else:
-        df_filtered = df
-
-    print(f"   📊 Dòng từ {since_date}: {len(df_filtered):,}")
-
-    if df_filtered.empty:
-        print(f"   ℹ️ Không có dữ liệu từ {since_date}")
-        return
-
-    # Tìm duplicate
-    keys = []
-    for _, row in df_filtered.iterrows():
-        keys.append(make_key(row, key_cols))
-
-    key_series = pd.Series(keys)
-    dup_mask = key_series.duplicated(keep=False)
-    dup_count = dup_mask.sum()
-
-    if dup_count == 0:
-        print(f"   ✅ Không tìm thấy dòng trùng lặp!")
-        return
-
-    print(f"   ⚠️ Phát hiện {dup_count} dòng trùng lặp ({dup_count // 2} cặp ước tính)")
-
-    # In chi tiết 10 cặp đầu
-    dup_indices = df_filtered.index[dup_mask]
-    shown = set()
-    pair_count = 0
-    for idx in dup_indices:
-        key = keys[list(df_filtered.index).index(idx)]
-        if key in shown:
-            continue
-        shown.add(key)
-        pair_count += 1
-        if pair_count > 10:
-            print(f"   ... và {len(shown) - 10} cặp trùng khác")
-            break
-        key_str = " | ".join(f"{c}={v}" for c, v in zip(key_cols, key) if v)
-        print(f"      [{pair_count}] {key_str}")
-
-    return dup_count
-
-
-# ==============================================================================
-# PHASE 0: XÓA TRÙNG LẶP TRONG FARM 126
-# ==============================================================================
-def remove_duplicates(gc, data_type="Công"):
-    """Xóa dòng trùng lặp trong Farm 126 sheet (giữ dòng đầu tiên)."""
-    tab = "Công (fact)" if data_type == "Công" else "Vật Tư (fact)"
-    key_cols = DEDUP_KEY_CONG if data_type == "Công" else DEDUP_KEY_VT
-
-    print(f"\n{'='*60}")
-    print(f"🗑️ XÓA TRÙNG LẶP: FARM 126 — {data_type}")
-    print(f"{'='*60}")
-
-    sheet_id = extract_sheet_id(FARM_126_URL)
-    ws = gc.open_by_key(sheet_id).worksheet(tab)
-    all_vals = ws.get_all_values()
-
-    if not all_vals or len(all_vals) < 2:
-        print(f"   ℹ️ Sheet trống")
-        return
-
-    headers = all_vals[0]
-    data_rows = all_vals[1:]
-    print(f"   📊 Tổng dòng (trước): {len(data_rows):,}")
-
-    df = pd.DataFrame(data_rows, columns=headers)
-
-    # Tạo composite key cho mỗi dòng
-    keys = []
-    for _, row in df.iterrows():
-        keys.append(make_key(row, key_cols))
-
-    df['_key'] = keys
-
-    # Đánh dấu trùng (giữ dòng đầu tiên)
-    dup_mask = df.duplicated(subset=['_key'], keep='first')
-    dup_count = dup_mask.sum()
-
-    if dup_count == 0:
-        print(f"   ✅ Không có dòng trùng lặp!")
-        return
-
-    print(f"   ⚠️ Sẽ xóa {dup_count} dòng trùng (giữ bản gốc đầu tiên)")
-
-    # Giữ lại chỉ dòng không trùng
-    df_clean = df[~dup_mask].drop(columns=['_key']).reset_index(drop=True)
-    print(f"   📊 Tổng dòng (sau):  {len(df_clean):,}")
-
-    # Ghi lại toàn bộ sheet (header + data)
-    ws.clear()
-    upload_data = [headers] + df_clean.values.tolist()
-    ws.update(range_name='A1', values=upload_data, value_input_option='USER_ENTERED')
-
-    print(f"   ✅ Đã xóa {dup_count} dòng trùng và ghi lại sheet")
-
-
-# ==============================================================================
-# MAIN
-# ==============================================================================
-def main():
-    parser = argparse.ArgumentParser(description="Tổng hợp dữ liệu Đội → Farm 126")
-    parser.add_argument('--dry-run', action='store_true',
-                        help='Chỉ kiểm tra, không ghi gì vào sheet')
-    parser.add_argument('--audit-only', action='store_true',
-                        help='Chỉ quét trùng lặp trong Farm 126')
-    parser.add_argument('--remove-dupes', action='store_true',
-                        help='Xóa dòng trùng lặp trong Farm 126 trước khi append')
-    parser.add_argument('--since', default='01/01/2026',
-                        help='Ngày bắt đầu audit (dd/mm/yyyy)')
-    args = parser.parse_args()
-
-    print("=" * 80)
-    print("🚀 CONSOLIDATE TEAMS → FARM 126 (Incremental Update)".center(80))
-    print("=" * 80)
-
-    gc = authenticate()
-    print("✅ Xác thực Google Sheets thành công\n")
-
-    if args.audit_only:
-        audit_duplicates(gc, "Công", args.since)
-        audit_duplicates(gc, "Vật Tư", args.since)
-        print(f"\n{'='*80}")
-        print("✅ HOÀN TẤT AUDIT".center(80))
-        print(f"{'='*80}")
-        return
-
-    # --- PHASE 0: XÓA TRÙNG (nếu có flag) ---
-    if args.remove_dupes:
-        remove_duplicates(gc, "Công")
-        remove_duplicates(gc, "Vật Tư")
-
-    # --- CÔNG ---
-    cong_new = read_all_teams(gc, "Công")
-    if not cong_new.empty:
-        cong_to_append, cong_dup = dedup_against_existing(gc, cong_new, "Công")
-        append_to_farm(gc, cong_to_append, "Công", dry_run=args.dry_run)
-    else:
-        cong_to_append = pd.DataFrame()
-        cong_dup = 0
-
-    # --- VẬT TƯ ---
-    vt_new = read_all_teams(gc, "Vật Tư")
-    if not vt_new.empty:
-        vt_to_append, vt_dup = dedup_against_existing(gc, vt_new, "Vật Tư")
-        append_to_farm(gc, vt_to_append, "Vật Tư", dry_run=args.dry_run)
-    else:
-        vt_to_append = pd.DataFrame()
-        vt_dup = 0
-
-    # --- AUDIT ---
-    print(f"\n{'─'*80}")
-    print("🔎 KIỂM TRA TRÙNG LẶP SAU KHI APPEND")
-    print(f"{'─'*80}")
-    audit_duplicates(gc, "Công", args.since)
-    audit_duplicates(gc, "Vật Tư", args.since)
-
-    # --- TỔNG KẾT ---
-    print(f"\n{'='*80}")
-    print("🎉 HOÀN TẤT".center(80))
-    print(f"{'='*80}")
-    mode = "DRY RUN" if args.dry_run else "THỰC THI"
-    print(f"   Mode: {mode}")
-    print(f"   Công  — Mới: {len(cong_to_append):,} | Trùng skip: {cong_dup:,}")
-    print(f"   Vật Tư — Mới: {len(vt_to_append):,} | Trùng skip: {vt_dup:,}")
-    if not args.dry_run and (not cong_to_append.empty or not vt_to_append.empty):
-        print(f"\n   💡 Chạy 'python sync_data_local.py' để đẩy lên Supabase")
-    print(f"{'='*80}")
-
+        processor.insert_to_db()
+        
+    processor.print_summary()
+    processor.close()
+    
+    print("\n✅ HOÀN TẤT!")
 
 if __name__ == "__main__":
-    main()
+    download_and_process()
