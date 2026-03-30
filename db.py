@@ -63,6 +63,21 @@ def load_filter_options(farm_ids: tuple):
     return lo_df, doi_df
 
 @st.cache_data(ttl=300)
+def load_seasons(farm_ids: tuple):
+    """Load danh sách vụ có sẵn cho các farm đã chọn."""
+    if not farm_ids:
+        return pd.DataFrame()
+    ph = ",".join(["%s"] * len(farm_ids))
+    return query(f"""
+        SELECT lo_id, lo_code, farm, vu, loai_trong, vu_start, vu_end
+        FROM v_season_date_ranges
+        WHERE lo_id IN (
+            SELECT lo_id FROM dim_lo WHERE farm_id IN ({ph})
+        )
+        ORDER BY farm, lo_code, vu
+    """, list(farm_ids))
+
+@st.cache_data(ttl=300)
 def load_date_range(farm_ids: tuple, has_dinh_muc: bool = False):
     ph = ",".join(["%s"] * len(farm_ids))
     extra = "AND dinh_muc > 0" if has_dinh_muc else ""
