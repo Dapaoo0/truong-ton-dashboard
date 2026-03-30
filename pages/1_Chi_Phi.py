@@ -491,7 +491,7 @@ if not lo_vu_df.empty:
 
     if has_vu_data:
         # ── Pivot table: Lô × Vụ ──────────────────────────────────────────
-        tip("Pivot: mỗi ô = tổng Công + Vật tư theo vụ · 'Chưa có vụ' = chi phí ngoài phạm vi vụ đã ghi nhận")
+        tip("Pivot: mỗi ô = tổng Công + Vật tư theo vụ · Rê chuột lên tiêu đề cột & click 🔍 để Lọc (Filter)")
         piv = lo_vu_filt.groupby(["farm_code", "lo_code", "vu"])["total"].sum().reset_index()
         piv_wide = piv.pivot_table(index=["farm_code", "lo_code"], columns="vu", values="total", aggfunc="sum", fill_value=0)
         piv_wide.columns.name = None
@@ -507,9 +507,11 @@ if not lo_vu_df.empty:
 
         display_cols = ["farm_code", "lo_code"] + all_vu_cols + ["Tổng"]
         piv_display = piv_wide[display_cols].rename(columns={"farm_code": "Farm", "lo_code": "Lô"})
+        col_cfg = {}
         for col in all_vu_cols + ["Tổng"]:
-            piv_display[col] = piv_display[col].apply(lambda x: f"{int(x):,}" if x > 0 else "—")
-        st.dataframe(piv_display, use_container_width=True, hide_index=True)
+            col_cfg[col] = st.column_config.NumberColumn(col, format="%d")
+            
+        st.dataframe(piv_display, use_container_width=True, hide_index=True, column_config=col_cfg)
 
     else:
         tip("Farm này chưa có dữ liệu Vụ — hiển thị tổng chi phí theo Lô")
