@@ -4,13 +4,14 @@ import plotly.express as px
 import plotly.graph_objects as go
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from db import query, load_farms, load_filter_options, load_date_range, format_vnd
+from db import query, load_farms, load_filter_options, load_seasons, load_date_range, format_vnd
 from style import (inject_css, page_header, kpi_row, section_header, tip,
                    drill_badge, apply_plotly_style, chart_or_table,
                    C, BAR_CONG, BAR_VAT_TU)
 
 st.set_page_config(page_title="Chi Phí", page_icon="💰", layout="wide")
 inject_css()
+
 
 # ── Extra CSS cho farm cards ──────────────────
 TX = C["text"]; TM = C["text_muted"]; TS = C["text_sub"]
@@ -100,11 +101,23 @@ with st.sidebar:
 
     lo_df, doi_df = load_filter_options(farm_ids)
     lo_type_opts = sorted(lo_df["lo_type"].dropna().unique())
+
     sel_lo_types = multiselect_all("Loại lô", lo_type_opts, "lotype_cp")
     lo_opts = sorted(lo_df[lo_df["lo_type"].isin(sel_lo_types)]["lo_code"]
                      .dropna().unique()) if sel_lo_types else []
     sel_los = st.multiselect("Lô", lo_opts, default=[], key="lo_cp",
                              help="Để trống = tất cả")
+
+    season_df = load_seasons(farm_ids)
+    sel_vus = []
+    if not season_df.empty:
+        season_df["label"] = season_df["farm"] + " - Lô " + season_df["lo_code"] + " - Vụ " + season_df["vu"] + " (" + pd.to_datetime(season_df["vu_start"]).dt.strftime('%d/%m/%Y') + " → " + pd.to_datetime(season_df["vu_end"]).dt.strftime('%d/%m/%Y') + ")"
+        season_opts = season_df["label"].tolist()
+        v_col1, v_col2 = st.columns([4, 1])
+        with v_col2: all_v = st.checkbox("Tất cả", value=False, key="all_vu_cp")
+        with v_col1: sel_vus_labels = st.multiselect("Vụ", season_opts, default=season_opts if all_v else [], key="vu_cp")
+        if sel_vus_labels:
+            sel_vus = season_df[season_df["label"].isin(sel_vus_labels)].to_dict("records")
 
     doi_df["label"] = doi_df["doi_code"] + doi_df["farms"].apply(
         lambda f: f" ({f})" if "," in f else "")
@@ -129,17 +142,25 @@ with st.sidebar:
 # LOAD DATA
 # ─────────────────────────────────────────────
 @st.cache_data(ttl=300)
-def load_cong(farm_ids, s, e, lo_types, sel_los, sel_dois, show_ht):
+def load_cong(farm_ids, s, e, lo_types, sel_los, sel_dois, show_ht, sel_vus=None):
     conds = [f"nk.farm_id IN ({','.join(['%s']*len(farm_ids))})"]
     params = list(farm_ids)
-    conds.append("nk.ngay BETWEEN %s AND %s"); params += [str(s), str(e)]
+    
+    if sel_vus:
+        or_conds = []
+        for v in sel_vus:
+            or_conds.append(f"(nk.lo_id = %s AND nk.ngay BETWEEN %s AND %s)")
+            params.extend([v["lo_id"], v["vu_start"], v["vu_end"]])
+        conds.append(f"({' OR '.join(or_conds)})")
+    else:
+        conds.append("nk.ngay BETWEEN %s AND %s"); params += [str(s), str(e)]
+        
     if lo_types: conds.append(f"l.lo_type IN ({','.join(['%s']*len(lo_types))})"); params += list(lo_types)
     if sel_los:  conds.append(f"l.lo_code IN ({','.join(['%s']*len(sel_los))})");  params += list(sel_los)
     if sel_dois: conds.append(f"d.doi_code IN ({','.join(['%s']*len(sel_dois))})"); params += list(sel_dois)
     if not show_ht: conds.append("nk.is_ho_tro = FALSE")
     return query(f"""
         SELECT f.farm_code, l.lo_code, d.doi_code,
-               -- FIX: cong_doan nằm trong dim_cong_viec, không phải fact table
                COALESCE(NULLIF(TRIM(cv.cong_doan),''),'Không ghi') as cong_doan,
                COALESCE(NULLIF(TRIM(cv.ten_cong_viec),''),'Không ghi') as ten_cong_viec,
                DATE_TRUNC('month',nk.ngay)::date as thang,
@@ -153,15 +174,23 @@ def load_cong(farm_ids, s, e, lo_types, sel_los, sel_dois, show_ht):
     """, params)
 
 @st.cache_data(ttl=300)
-def load_vt(farm_ids, s, e, lo_types, sel_los):
+def load_vt(farm_ids, s, e, lo_types, sel_los, sel_vus=None):
     conds = [f"vt.farm_id IN ({','.join(['%s']*len(farm_ids))})"]
     params = list(farm_ids)
-    conds.append("vt.ngay BETWEEN %s AND %s"); params += [str(s), str(e)]
+    
+    if sel_vus:
+        or_conds = []
+        for v in sel_vus:
+            or_conds.append(f"(vt.lo_id = %s AND vt.ngay BETWEEN %s AND %s)")
+            params.extend([v["lo_id"], v["vu_start"], v["vu_end"]])
+        conds.append(f"({' OR '.join(or_conds)})")
+    else:
+        conds.append("vt.ngay BETWEEN %s AND %s"); params += [str(s), str(e)]
+        
     if lo_types: conds.append(f"l.lo_type IN ({','.join(['%s']*len(lo_types))})"); params += list(lo_types)
     if sel_los:  conds.append(f"l.lo_code IN ({','.join(['%s']*len(sel_los))})");  params += list(sel_los)
     return query(f"""
         SELECT f.farm_code, l.lo_code,
-               -- FIX: loai_vat_tu chỉ có trong dim_vat_tu (v), không có trong fact_vat_tu
                COALESCE(NULLIF(TRIM(v.loai_vat_tu), ''), 'Không xác định') as loai_vat_tu,
                COALESCE(NULLIF(TRIM(v.ten_vat_tu),''), 'Không xác định') as ten_vat_tu,
                DATE_TRUNC('month',vt.ngay)::date as thang,
@@ -185,8 +214,10 @@ def load_lo_doi_map(farm_ids):
     """, list(farm_ids))
 
 raw_c = load_cong(farm_ids, start_d, end_d,
-                  tuple(sel_lo_types), tuple(sel_los), tuple(sel_dois), show_ht)
-raw_v = load_vt(farm_ids, start_d, end_d, tuple(sel_lo_types), tuple(sel_los))
+                  tuple(sel_lo_types), tuple(sel_los), tuple(sel_dois), show_ht, 
+                  tuple(sel_vus) if sel_vus else None)
+raw_v = load_vt(farm_ids, start_d, end_d, tuple(sel_lo_types), tuple(sel_los),
+                tuple(sel_vus) if sel_vus else None)
 to_num(raw_c, ["thanh_tien", "so_cong"])
 to_num(raw_v, ["thanh_tien"])
 
@@ -271,9 +302,17 @@ with col2:
 # ═════════════════════════════════════════════
 section_header("Theo Farm", "click card để drill · breakdown xuất hiện bên dưới")
 
-fc = raw_c.groupby("farm_code")["thanh_tien"].sum().reset_index()
-fv_g = raw_v.groupby("farm_code")["thanh_tien"].sum().reset_index() if not raw_v.empty else pd.DataFrame(columns=["farm_code","thanh_tien"])
-bf = fc.merge(fv_g, on="farm_code", how="outer", suffixes=("_c", "_v")).fillna(0)
+fc = raw_c.groupby("farm_code")["thanh_tien"].sum().reset_index().rename(columns={"thanh_tien": "thanh_tien_c"})
+fv_g = raw_v.groupby("farm_code")["thanh_tien"].sum().reset_index().rename(columns={"thanh_tien": "thanh_tien_v"})
+
+bf = pd.DataFrame({"farm_code": sel_farms})
+if not fc.empty: bf = bf.merge(fc, on="farm_code", how="left")
+else: bf["thanh_tien_c"] = 0.0
+
+if not fv_g.empty: bf = bf.merge(fv_g, on="farm_code", how="left")
+else: bf["thanh_tien_v"] = 0.0
+
+bf = bf.fillna(0)
 to_num(bf, ["thanh_tien_c", "thanh_tien_v"])
 bf["total"] = bf["thanh_tien_c"] + bf["thanh_tien_v"]
 bf = bf.sort_values("total", ascending=False).reset_index(drop=True)
