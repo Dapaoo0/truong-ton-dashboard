@@ -782,7 +782,19 @@ with col2:
             
         # Chart 4: Tên Vật Tư
         if "ten_vat_tu" in dv_vt.columns:
-            tvt_grp = dv_vt.groupby("ten_vat_tu")["thanh_tien"].sum().reset_index()
+            st.markdown("<br>", unsafe_allow_html=True)
+            dv_tvt = dv_vt.copy()
+            if "loai_vat_tu" in dv_tvt.columns:
+                loai_list = sorted([str(x) for x in dv_tvt["loai_vat_tu"].dropna().unique() if str(x).strip()])
+                loai_list.insert(0, "Tất cả")
+                sel_loai = st.selectbox("Lọc chi tiết theo Loại Vật Tư", loai_list, key="filter_loai_vat_tu")
+                if sel_loai != "Tất cả":
+                    dv_tvt = dv_tvt[dv_tvt["loai_vat_tu"] == sel_loai]
+                chart_title = f"Top 10 Tên Vật Tư ({sel_loai})" if sel_loai != "Tất cả" else "Top 10 Tên Vật Tư"
+            else:
+                chart_title = "Top 10 Tên Vật Tư"
+
+            tvt_grp = dv_tvt.groupby("ten_vat_tu")["thanh_tien"].sum().reset_index()
             tvt_grp["thanh_tien"] = pd.to_numeric(tvt_grp["thanh_tien"], errors="coerce").fillna(0)
             tvt_grp = tvt_grp[tvt_grp["thanh_tien"] > 0].sort_values("thanh_tien", ascending=True).tail(10)
             
@@ -797,9 +809,11 @@ with col2:
                 fig_tvt.update_layout(showlegend=False, xaxis_tickformat=",.0f",
                                       yaxis=dict(automargin=True),
                                       margin=dict(t=30, b=30, l=120, r=20),
-                                      title=dict(text="Top 10 Tên Vật Tư", font=dict(size=12, color=TM)))
+                                      title=dict(text=chart_title, font=dict(size=12, color=TM)))
                 apply_plotly_style(fig_tvt, 280)
                 st.plotly_chart(fig_tvt, use_container_width=True, key="bar_ten_vat_tu")
+            else:
+                st.info("Không có dữ liệu cho phần Lọc này.")
     else:
         st.info("Không có dữ liệu vật tư.")
 
