@@ -597,57 +597,108 @@ if st.session_state.cp_doi:
 st.markdown("---")
 
 # ═════════════════════════════════════════════
-# SECTION 4: CƠ CẤU — Treemap
+# ═════════════════════════════════════════════
+# SECTION 4: CƠ CẤU CHI PHÍ — Bar Charts
 # ═════════════════════════════════════════════
 section_header("Cơ cấu chi phí chi tiết",
-               "click vào ô để zoom xuống nhánh chi tiết · click tiêu đề phía trên hình để quay lại")
+               "top 10 hạng mục và chi tiết cụ thể · tự động lọc theo bộ lọc phía trên")
 
-TREEMAP_COLORS = [GRN, BLU, C["purple"], AMB, C["red"],
-                  "#79C0FF", "#A5F3B0", "#FCD34D", "#F97583", "#BC8CFF",
-                  "#58A6FF", "#3FB950", "#F0A800", "#8B949E", "#E6EDF3"]
 col1, col2 = st.columns(2)
 
 with col1:
-    dc_sb = dc[dc["cong_doan"].notna()].copy()
-    dc_sb["thanh_tien"] = pd.to_numeric(dc_sb["thanh_tien"], errors="coerce").fillna(0)
-    dc_sb = dc_sb[dc_sb["thanh_tien"] > 0]
-    if not dc_sb.empty:
-        fig_sb_c = px.treemap(dc_sb, path=["farm_code", "doi_code", "cong_doan"],
-                              values="thanh_tien", color_discrete_sequence=TREEMAP_COLORS)
-        fig_sb_c.update_traces(
-            textfont=dict(size=11),
-            hovertemplate="<b>%{label}</b><br>%{value:,.0f} VND<br>"
-                          "%{percentParent} của %{parent}<extra></extra>")
-        fig_sb_c.update_layout(
-            title=dict(text="Chi phí Công: Farm → Đội → Công đoạn",
-                       font=dict(size=12, color=TM)),
-            margin=dict(t=40, l=5, r=5, b=5))
-        apply_plotly_style(fig_sb_c, 420)
-        chart_or_table(fig_sb_c, dc_sb.groupby(["farm_code","doi_code","cong_doan"])["thanh_tien"].sum().reset_index().rename(
-            columns={"farm_code":"Farm","doi_code":"Đội","cong_doan":"Công đoạn","thanh_tien":"Chi phí (VND)"}),
-            key="sb_cong")
+    st.markdown(f'<div style="font-size:14px;font-weight:600;color:{C["blue"]};margin-bottom:8px">👷 CHI PHÍ CÔNG</div>', unsafe_allow_html=True)
+    
+    dc_cd = dc[dc["cong_doan"].notna()].copy()
+    if not dc_cd.empty:
+        # Chart 1: Công Đoạn
+        cd_grp = dc_cd.groupby("cong_doan")["thanh_tien"].sum().reset_index()
+        cd_grp["thanh_tien"] = pd.to_numeric(cd_grp["thanh_tien"], errors="coerce").fillna(0)
+        cd_grp = cd_grp[cd_grp["thanh_tien"] > 0].sort_values("thanh_tien", ascending=True).tail(10)
+        
+        if not cd_grp.empty:
+            fig_cd = go.Figure(go.Bar(
+                y=cd_grp["cong_doan"], x=cd_grp["thanh_tien"], orientation="h",
+                marker_color=BAR_CONG,
+                hovertemplate="<b>%{y}</b><br>%{x:,.0f} VND<extra></extra>",
+                text=[fmt_m(v) for v in cd_grp["thanh_tien"]],
+                textposition="auto", textfont=dict(color=TS, size=11)
+            ))
+            fig_cd.update_layout(showlegend=False, xaxis_tickformat=",.0f",
+                                 yaxis=dict(automargin=True),
+                                 margin=dict(t=30, b=30, l=120, r=20),
+                                 title=dict(text="Top 10 Công Đoạn", font=dict(size=12, color=TM)))
+            apply_plotly_style(fig_cd, 280)
+            st.plotly_chart(fig_cd, use_container_width=True, key="bar_cong_doan")
+            
+        # Chart 2: Tên Công Việc
+        if "ten_cong_viec" in dc_cd.columns:
+            cv_grp = dc_cd.groupby("ten_cong_viec")["thanh_tien"].sum().reset_index()
+            cv_grp["thanh_tien"] = pd.to_numeric(cv_grp["thanh_tien"], errors="coerce").fillna(0)
+            cv_grp = cv_grp[cv_grp["thanh_tien"] > 0].sort_values("thanh_tien", ascending=True).tail(10)
+            
+            if not cv_grp.empty:
+                fig_cv = go.Figure(go.Bar(
+                    y=cv_grp["ten_cong_viec"], x=cv_grp["thanh_tien"], orientation="h",
+                    marker_color=C["blue"],
+                    hovertemplate="<b>%{y}</b><br>%{x:,.0f} VND<extra></extra>",
+                    text=[fmt_m(v) for v in cv_grp["thanh_tien"]],
+                    textposition="auto", textfont=dict(color=TS, size=11)
+                ))
+                fig_cv.update_layout(showlegend=False, xaxis_tickformat=",.0f",
+                                     yaxis=dict(automargin=True),
+                                     margin=dict(t=30, b=30, l=120, r=20),
+                                     title=dict(text="Top 10 Tên Công Việc", font=dict(size=12, color=TM)))
+                apply_plotly_style(fig_cv, 280)
+                st.plotly_chart(fig_cv, use_container_width=True, key="bar_cong_viec")
     else:
-        st.info("Không có dữ liệu công đoạn.")
+        st.info("Không có dữ liệu công.")
 
 with col2:
-    dv_sb = dv.copy()
-    dv_sb["thanh_tien"] = pd.to_numeric(dv_sb["thanh_tien"], errors="coerce").fillna(0)
-    dv_sb = dv_sb[dv_sb["thanh_tien"] > 0]
-    if not dv_sb.empty:
-        fig_sb_v = px.treemap(dv_sb, path=["farm_code", "lo_code", "loai_vat_tu"],
-                              values="thanh_tien", color_discrete_sequence=TREEMAP_COLORS[::-1])
-        fig_sb_v.update_traces(
-            textfont=dict(size=11),
-            hovertemplate="<b>%{label}</b><br>%{value:,.0f} VND<br>"
-                          "%{percentParent} của %{parent}<extra></extra>")
-        fig_sb_v.update_layout(
-            title=dict(text="Chi phí Vật tư: Farm → Lô → Loại vật tư",
-                       font=dict(size=12, color=TM)),
-            margin=dict(t=40, l=5, r=5, b=5))
-        apply_plotly_style(fig_sb_v, 420)
-        chart_or_table(fig_sb_v, dv_sb.groupby(["farm_code","lo_code","loai_vat_tu"])["thanh_tien"].sum().reset_index().rename(
-            columns={"farm_code":"Farm","lo_code":"Lô","loai_vat_tu":"Loại VT","thanh_tien":"Chi phí (VND)"}),
-            key="sb_vattu")
+    st.markdown(f'<div style="font-size:14px;font-weight:600;color:{C["amber"]};margin-bottom:8px">🧪 CHI PHÍ VẬT TƯ</div>', unsafe_allow_html=True)
+    
+    dv_vt = dv.copy()
+    if not dv_vt.empty:
+        # Chart 3: Loại Vật Tư
+        if "loai_vat_tu" in dv_vt.columns:
+            lvt_grp = dv_vt.groupby("loai_vat_tu")["thanh_tien"].sum().reset_index()
+            lvt_grp["thanh_tien"] = pd.to_numeric(lvt_grp["thanh_tien"], errors="coerce").fillna(0)
+            lvt_grp = lvt_grp[lvt_grp["thanh_tien"] > 0].sort_values("thanh_tien", ascending=True).tail(10)
+            
+            if not lvt_grp.empty:
+                fig_lvt = go.Figure(go.Bar(
+                    y=lvt_grp["loai_vat_tu"], x=lvt_grp["thanh_tien"], orientation="h",
+                    marker_color=BAR_VAT_TU,
+                    hovertemplate="<b>%{y}</b><br>%{x:,.0f} VND<extra></extra>",
+                    text=[fmt_m(v) for v in lvt_grp["thanh_tien"]],
+                    textposition="auto", textfont=dict(color=TS, size=11)
+                ))
+                fig_lvt.update_layout(showlegend=False, xaxis_tickformat=",.0f",
+                                      yaxis=dict(automargin=True),
+                                      margin=dict(t=30, b=30, l=120, r=20),
+                                      title=dict(text="Top 10 Loại Vật Tư", font=dict(size=12, color=TM)))
+                apply_plotly_style(fig_lvt, 280)
+                st.plotly_chart(fig_lvt, use_container_width=True, key="bar_loai_vat_tu")
+            
+        # Chart 4: Tên Vật Tư
+        if "ten_vat_tu" in dv_vt.columns:
+            tvt_grp = dv_vt.groupby("ten_vat_tu")["thanh_tien"].sum().reset_index()
+            tvt_grp["thanh_tien"] = pd.to_numeric(tvt_grp["thanh_tien"], errors="coerce").fillna(0)
+            tvt_grp = tvt_grp[tvt_grp["thanh_tien"] > 0].sort_values("thanh_tien", ascending=True).tail(10)
+            
+            if not tvt_grp.empty:
+                fig_tvt = go.Figure(go.Bar(
+                    y=tvt_grp["ten_vat_tu"], x=tvt_grp["thanh_tien"], orientation="h",
+                    marker_color=C["amber"],
+                    hovertemplate="<b>%{y}</b><br>%{x:,.0f} VND<extra></extra>",
+                    text=[fmt_m(v) for v in tvt_grp["thanh_tien"]],
+                    textposition="auto", textfont=dict(color=TS, size=11)
+                ))
+                fig_tvt.update_layout(showlegend=False, xaxis_tickformat=",.0f",
+                                      yaxis=dict(automargin=True),
+                                      margin=dict(t=30, b=30, l=120, r=20),
+                                      title=dict(text="Top 10 Tên Vật Tư", font=dict(size=12, color=TM)))
+                apply_plotly_style(fig_tvt, 280)
+                st.plotly_chart(fig_tvt, use_container_width=True, key="bar_ten_vat_tu")
     else:
         st.info("Không có dữ liệu vật tư.")
 
