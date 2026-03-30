@@ -78,6 +78,65 @@ def load_seasons(farm_ids: tuple):
     """, list(farm_ids))
 
 @st.cache_data(ttl=300)
+def load_lo_vu_summary(farm_ids: tuple, s, e, lo_types=(), sel_los=()):
+    """Tổng chi phí theo Lô & Vụ — JOIN date-based với v_season_date_ranges."""
+    ph = ",".join(["%s"] * len(farm_ids))
+    conds_c = [f"nk.farm_id IN ({ph})"]
+    conds_v = [f"vt.farm_id IN ({ph})"]
+    params_c = list(farm_ids)
+    params_v = list(farm_ids)
+    conds_c.append("nk.ngay BETWEEN %s AND %s"); params_c += [str(s), str(e)]
+    conds_v.append("vt.ngay BETWEEN %s AND %s"); params_v += [str(s), str(e)]
+    if lo_types:
+        ph_lt = ",".join(["%s"] * len(lo_types))
+        conds_c.append(f"lc.lo_type IN ({ph_lt})"); params_c += list(lo_types)
+        conds_v.append(f"lv.lo_type IN ({ph_lt})"); params_v += list(lo_types)
+    if sel_los:
+        ph_lo = ",".join(["%s"] * len(sel_los))
+        conds_c.append(f"lc.lo_code IN ({ph_lo})"); params_c += list(sel_los)
+        conds_v.append(f"lv.lo_code IN ({ph_lo})"); params_v += list(sel_los)
+
+    cong_df = query(f"""
+        SELECT lc.lo_code, fc.farm_code,
+               COALESCE(vsr.vu, 'Chưa có vụ') as vu,
+               SUM(nk.thanh_tien) as tien_cong,
+               SUM(nk.so_cong)    as so_cong
+        FROM fact_nhat_ky_san_xuat nk
+        JOIN dim_lo   lc ON lc.lo_id = nk.lo_id
+        JOIN dim_farm fc ON fc.farm_id = nk.farm_id
+        LEFT JOIN v_season_date_ranges vsr
+               ON vsr.lo_id = nk.lo_id AND nk.ngay BETWEEN vsr.vu_start AND vsr.vu_end
+        WHERE {' AND '.join(conds_c)}
+        GROUP BY lc.lo_code, fc.farm_code, vsr.vu
+    """, params_c)
+
+    vt_df = query(f"""
+        SELECT lv.lo_code, fv.farm_code,
+               COALESCE(vsr.vu, 'Chưa có vụ') as vu,
+               SUM(vt.thanh_tien) as tien_vt
+        FROM fact_vat_tu vt
+        JOIN dim_lo   lv ON lv.lo_id = vt.lo_id
+        JOIN dim_farm fv ON fv.farm_id = vt.farm_id
+        LEFT JOIN v_season_date_ranges vsr
+               ON vsr.lo_id = vt.lo_id AND vt.ngay BETWEEN vsr.vu_start AND vsr.vu_end
+        WHERE {' AND '.join(conds_v)}
+        GROUP BY lv.lo_code, fv.farm_code, vsr.vu
+    """, params_v)
+
+    if cong_df.empty and vt_df.empty:
+        return pd.DataFrame()
+    if cong_df.empty:
+        merged = vt_df.copy(); merged["tien_cong"] = 0.0; merged["so_cong"] = 0.0
+    elif vt_df.empty:
+        merged = cong_df.copy(); merged["tien_vt"] = 0.0
+    else:
+        merged = pd.merge(cong_df, vt_df, on=["lo_code", "farm_code", "vu"], how="outer").fillna(0)
+    for col in ["tien_cong", "tien_vt", "so_cong"]:
+        merged[col] = pd.to_numeric(merged[col], errors="coerce").fillna(0)
+    merged["total"] = merged["tien_cong"] + merged["tien_vt"]
+    return merged.sort_values(["farm_code", "lo_code", "vu"]).reset_index(drop=True)
+
+@st.cache_data(ttl=300)
 def load_date_range(farm_ids: tuple, has_dinh_muc: bool = False):
     ph = ",".join(["%s"] * len(farm_ids))
     extra = "AND dinh_muc > 0" if has_dinh_muc else ""

@@ -4,7 +4,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import sys, os
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from db import query, load_farms, load_filter_options, load_seasons, load_date_range, format_vnd
+from db import query, load_farms, load_filter_options, load_seasons, load_lo_vu_summary, load_date_range, format_vnd
 from style import (inject_css, page_header, kpi_row, section_header, tip,
                    drill_badge, apply_plotly_style, chart_or_table,
                    C, BAR_CONG, BAR_VAT_TU)
@@ -411,10 +411,8 @@ if st.session_state.cp_farm:
 
 st.markdown("---")
 
-# ═════════════════════════════════════════════
-# SECTION 2: LÔ — Bubble chart
-# ═════════════════════════════════════════════
-section_header("Theo Lô", "bubble chart: click để drill · x=công · y=vật tư · size=tổng")
+# ── Biến dùng chung cho drill lô ─────────────
+farm_color_map = {"Farm 126": GRN, "Farm 157": BLU, "Farm 195": C["purple"]}
 
 lc = dc.groupby(["farm_code", "lo_code"])["thanh_tien"].sum().reset_index()
 lc.columns = ["farm_code", "lo_code", "tien_c"]
@@ -429,82 +427,16 @@ bl["tien_v"] = pd.to_numeric(bl["tien_v"], errors="coerce").fillna(0)
 bl["total"]  = bl["tien_c"] + bl["tien_v"]
 bl = bl[bl["total"] > 0].reset_index(drop=True)
 
-top40 = bl.nlargest(40, "total").reset_index(drop=True)
-active_lo = st.session_state.cp_lo
-
-farm_color_map = {
-    "Farm 126": GRN, "Farm 157": BLU, "Farm 195": C["purple"]
-}
-
-tip("Bubble to = tổng chi phí cao · Vị trí nằm gần trục Y = nhiều vật tư · Gần trục X = nhiều công")
-
-fig_bubble = go.Figure()
-for farm_name, grp in top40.groupby("farm_code"):
-    color = farm_color_map.get(farm_name, GRN)
-    marker_colors = [AMB if row["lo_code"] == active_lo else color
-                     for _, row in grp.iterrows()]
-    t_max = top40["total"].max()
-    t_min = top40["total"].min()
-    sizes = [10 + 50 * (row["total"] - t_min) / max(t_max - t_min, 1)
-             for _, row in grp.iterrows()]
-
-    fig_bubble.add_scatter(
-        x=grp["tien_c"], y=grp["tien_v"],
-        mode="markers+text",
-        name=farm_name,
-        marker=dict(
-            size=sizes,
-            color=marker_colors,
-            opacity=0.85,
-            line=dict(width=[2 if row["lo_code"] == active_lo else 0.5
-                              for _, row in grp.iterrows()],
-                      color=[TX if row["lo_code"] == active_lo else "rgba(0,0,0,0.3)"
-                             for _, row in grp.iterrows()])
-        ),
-        text=[row["lo_code"] for _, row in grp.iterrows()],
-        textposition="top center",
-        textfont=dict(color=TM, size=9),
-        customdata=[[row["lo_code"], row["farm_code"],
-                     row["total"], row["tien_c"], row["tien_v"]]
-                    for _, row in grp.iterrows()],
-        hovertemplate=(
-            "<b>%{customdata[1]} · Lô %{customdata[0]}</b><br>"
-            "Tổng: %{customdata[2]:,.0f} VND<br>"
-            "Công: %{customdata[3]:,.0f} VND<br>"
-            "Vật tư: %{customdata[4]:,.0f} VND<extra></extra>"
-        ),
-    )
-
-fig_bubble.update_layout(
-    xaxis=dict(title="Chi phí Công (VND)", tickformat=",.0f"),
-    yaxis=dict(title="Chi phí Vật tư (VND)", tickformat=",.0f"),
-    title=dict(text="Chi phí Công vs Vật tư theo Lô (click bubble để drill)",
-               font=dict(size=12, color=TM)),
-)
-apply_plotly_style(fig_bubble, 480)
-ev_bubble = chart_or_table(fig_bubble, top40[["farm_code","lo_code","tien_c","tien_v","total"]].rename(
-    columns={"farm_code":"Farm","lo_code":"Lô","tien_c":"Công (VND)","tien_v":"Vật tư (VND)","total":"Tổng (VND)"}),
-    key="lo_bubble", on_select="rerun", selection_mode="points")
-if ev_bubble and ev_bubble.selection and ev_bubble.selection.get("points"):
-    pt = ev_bubble.selection.get("points")[0]
-    lo_clicked = pt.get("customdata", [None])[0] if pt.get("customdata") else None
-    if lo_clicked and lo_clicked != st.session_state.cp_lo:
-        st.session_state.cp_lo   = lo_clicked
-        st.session_state.cp_farm = None
-        st.session_state.cp_doi  = None
-
-# ── Breakdown sau khi drill lô ────────────────
+# ── Breakdown khi drill lô (từ sidebar/bubble) ─
 if st.session_state.cp_lo:
     active_lo_name = st.session_state.cp_lo
     lo_row = bl[bl["lo_code"] == active_lo_name]
     lo_farm = lo_row["farm_code"].values[0] if not lo_row.empty else ""
-
     st.markdown(
         f'<div style="background:{C["green_pale"]};border-left:3px solid {GRN};'
         f'border-radius:0 6px 6px 0;padding:8px 14px;margin:8px 0;font-size:12px;color:{GRN}">'
         f'📊 Đang xem chi tiết: <b>{lo_farm} · Lô {active_lo_name}</b></div>',
         unsafe_allow_html=True)
-
     col1, col2 = st.columns(2)
     with col1:
         mc_lo = dc[dc["lo_code"] == active_lo_name].groupby("thang")["thanh_tien"].sum().reset_index()
@@ -512,13 +444,10 @@ if st.session_state.cp_lo:
         mlo = mc_lo.merge(mv_lo, on="thang", how="outer", suffixes=("_c","_v")).fillna(0)
         mlo["ts"] = pd.to_datetime(mlo["thang"]).dt.strftime("%m/%Y")
         fig_lot = go.Figure()
-        fig_lot.add_bar(x=mlo["ts"], y=mlo["thanh_tien_c"], name="Công",   marker_color=BAR_CONG,
-                        hovertemplate="<b>%{x}</b><br>Công: %{y:,.0f} VND<extra></extra>")
-        fig_lot.add_bar(x=mlo["ts"], y=mlo["thanh_tien_v"], name="Vật tư", marker_color=BAR_VAT_TU,
-                        hovertemplate="<b>%{x}</b><br>Vật tư: %{y:,.0f} VND<extra></extra>")
+        fig_lot.add_bar(x=mlo["ts"], y=mlo["thanh_tien_c"], name="Công",   marker_color=BAR_CONG, hovertemplate="<b>%{x}</b><br>Công: %{y:,.0f} VND<extra></extra>")
+        fig_lot.add_bar(x=mlo["ts"], y=mlo["thanh_tien_v"], name="Vật tư", marker_color=BAR_VAT_TU, hovertemplate="<b>%{x}</b><br>Vật tư: %{y:,.0f} VND<extra></extra>")
         fig_lot.update_layout(barmode="stack", yaxis_tickformat=",.0f",
-                              title=dict(text=f"Lô {active_lo_name} — chi phí theo tháng",
-                                         font=dict(size=12, color=TM)))
+                              title=dict(text=f"Lô {active_lo_name} — chi phí theo tháng", font=dict(size=12, color=TM)))
         apply_plotly_style(fig_lot, 280)
         st.plotly_chart(fig_lot, use_container_width=True, key="lo_trend")
     with col2:
@@ -527,18 +456,131 @@ if st.session_state.cp_lo:
         cd_lo = cd_lo.sort_values("thanh_tien", ascending=True).tail(10)
         fig_locd = go.Figure(go.Bar(
             y=cd_lo["cong_doan"], x=cd_lo["thanh_tien"], orientation="h",
-            marker_color=BAR_CONG,
-            hovertemplate="<b>%{y}</b><br>%{x:,.0f} VND<extra></extra>",
-        ))
+            marker_color=BAR_CONG, hovertemplate="<b>%{y}</b><br>%{x:,.0f} VND<extra></extra>"))
         fig_locd.update_layout(showlegend=False, xaxis_tickformat=",.0f",
-                               yaxis=dict(automargin=True),
-                               margin=dict(t=44, b=48, l=140, r=8),
-                               title=dict(text=f"Công đoạn trong Lô {active_lo_name}",
-                                          font=dict(size=12, color=TM)))
+                               yaxis=dict(automargin=True), margin=dict(t=44, b=48, l=140, r=8),
+                               title=dict(text=f"Công đoạn trong Lô {active_lo_name}", font=dict(size=12, color=TM)))
         apply_plotly_style(fig_locd, 280)
         st.plotly_chart(fig_locd, use_container_width=True, key="lo_cd")
 
 st.markdown("---")
+
+
+
+
+
+# ═════════════════════════════════════════════
+# SECTION Lô & Vụ — Pivot table + Bar chart
+# ═════════════════════════════════════════════
+section_header("Theo Lô & Vụ", "tổng chi phí theo từng lô · phân chia theo vụ")
+
+lo_vu_df = load_lo_vu_summary(
+    farm_ids, start_d, end_d,
+    tuple(sel_lo_types), tuple(sel_los)
+)
+
+if not lo_vu_df.empty:
+    # Apply drill filter
+    lo_vu_filt = lo_vu_df.copy()
+    if st.session_state.cp_farm:
+        lo_vu_filt = lo_vu_filt[lo_vu_filt["farm_code"] == st.session_state.cp_farm]
+    if st.session_state.cp_lo:
+        lo_vu_filt = lo_vu_filt[lo_vu_filt["lo_code"] == st.session_state.cp_lo]
+
+    has_vu_data = (lo_vu_filt["vu"] != "Chưa có vụ").any()
+
+    if has_vu_data:
+        # ── Pivot table: Lô × Vụ ──────────────────────────────────────────
+        tip("Pivot: mỗi ô = tổng Công + Vật tư theo vụ · 'Chưa có vụ' = chi phí ngoài phạm vi vụ đã ghi nhận")
+        piv = lo_vu_filt.groupby(["farm_code", "lo_code", "vu"])["total"].sum().reset_index()
+        piv_wide = piv.pivot_table(index=["farm_code", "lo_code"], columns="vu", values="total", aggfunc="sum", fill_value=0)
+        piv_wide.columns.name = None
+        piv_wide = piv_wide.reset_index()
+        # Sắp xếp cột: farm_code, lo_code, các vụ F0 F1..., Chưa có vụ, Tổng
+        vu_cols = sorted([c for c in piv_wide.columns if c not in ["farm_code", "lo_code", "Chưa có vụ"]])
+        other_cols = [c for c in ["Chưa có vụ"] if c in piv_wide.columns]
+        all_vu_cols = vu_cols + other_cols
+        for col in all_vu_cols:
+            piv_wide[col] = pd.to_numeric(piv_wide[col], errors="coerce").fillna(0)
+        piv_wide["Tổng"] = piv_wide[all_vu_cols].sum(axis=1)
+        piv_wide = piv_wide.sort_values("Tổng", ascending=False).reset_index(drop=True)
+
+        display_cols = ["farm_code", "lo_code"] + all_vu_cols + ["Tổng"]
+        piv_display = piv_wide[display_cols].rename(columns={"farm_code": "Farm", "lo_code": "Lô"})
+        for col in all_vu_cols + ["Tổng"]:
+            piv_display[col] = piv_display[col].apply(lambda x: f"{int(x):,}" if x > 0 else "—")
+        st.dataframe(piv_display, use_container_width=True, hide_index=True)
+
+    else:
+        tip("Farm này chưa có dữ liệu Vụ — hiển thị tổng chi phí theo Lô")
+
+    # ── Bar chart: Top 15 lô tổng chi phí ──────────────────────────────
+    lo_bar = lo_vu_filt.groupby(["farm_code", "lo_code"])[["tien_cong", "tien_vt"]].sum().reset_index()
+    lo_bar["total"] = lo_bar["tien_cong"] + lo_bar["tien_vt"]
+    lo_bar = lo_bar[lo_bar["total"] > 0].sort_values("total", ascending=True).tail(15)
+
+    if not lo_bar.empty:
+        fig_lo_bar = go.Figure()
+        fig_lo_bar.add_bar(
+            y=lo_bar["lo_code"], x=lo_bar["tien_cong"], name="Công",
+            orientation="h", marker_color=BAR_CONG,
+            hovertemplate="<b>Lô %{y}</b><br>Công: %{x:,.0f} VND<extra></extra>"
+        )
+        fig_lo_bar.add_bar(
+            y=lo_bar["lo_code"], x=lo_bar["tien_vt"], name="Vật tư",
+            orientation="h", marker_color=BAR_VAT_TU,
+            hovertemplate="<b>Lô %{y}</b><br>Vật tư: %{x:,.0f} VND<extra></extra>"
+        )
+        _lo_label_len = max(len(str(c)) for c in lo_bar["lo_code"]) if not lo_bar.empty else 6
+        fig_lo_bar.update_layout(
+            barmode="stack", xaxis_tickformat=",.0f",
+            yaxis=dict(automargin=True),
+            margin=dict(t=40, b=40, l=max(60, _lo_label_len * 7), r=8),
+            title=dict(text="Top 15 Lô — Chi phí Công & Vật tư", font=dict(size=12, color=TM)),
+        )
+        apply_plotly_style(fig_lo_bar, max(360, len(lo_bar) * 28))
+        st.plotly_chart(fig_lo_bar, use_container_width=True, key="lo_vu_bar")
+
+    # ── Bubble chart (ẩn trong expander) ────────────────────────────────
+    with st.expander("🔵 Xem Bubble chart Công vs Vật tư theo Lô", expanded=False):
+        lc2 = dc.groupby(["farm_code", "lo_code"])["thanh_tien"].sum().reset_index()
+        lc2.columns = ["farm_code", "lo_code", "tien_c"]
+        if not dv.empty:
+            lv2 = dv.groupby(["farm_code", "lo_code"])["thanh_tien"].sum().reset_index()
+            lv2.columns = ["farm_code", "lo_code", "tien_v"]
+            bl2 = lc2.merge(lv2, on=["farm_code", "lo_code"], how="outer").fillna(0)
+        else:
+            bl2 = lc2.copy(); bl2["tien_v"] = 0.0
+        for col in ["tien_c", "tien_v"]:
+            bl2[col] = pd.to_numeric(bl2[col], errors="coerce").fillna(0)
+        bl2["total"] = bl2["tien_c"] + bl2["tien_v"]
+        bl2 = bl2[bl2["total"] > 0]
+        top40b = bl2.nlargest(40, "total").reset_index(drop=True)
+        fig_bub = go.Figure()
+        for fn, grp in top40b.groupby("farm_code"):
+            clr = farm_color_map.get(fn, GRN)
+            t_max = top40b["total"].max(); t_min = top40b["total"].min()
+            sizes = [10 + 50 * (r["total"] - t_min) / max(t_max - t_min, 1) for _, r in grp.iterrows()]
+            fig_bub.add_scatter(
+                x=grp["tien_c"], y=grp["tien_v"], mode="markers+text", name=fn,
+                marker=dict(size=sizes, color=clr, opacity=0.8, line=dict(width=0.5, color="rgba(0,0,0,0.3)")),
+                text=[r["lo_code"] for _, r in grp.iterrows()],
+                textposition="top center", textfont=dict(color=TM, size=9),
+                customdata=[[r["lo_code"], r["farm_code"], r["total"], r["tien_c"], r["tien_v"]] for _, r in grp.iterrows()],
+                hovertemplate="<b>%{customdata[1]} · Lô %{customdata[0]}</b><br>Tổng: %{customdata[2]:,.0f}<br>Công: %{customdata[3]:,.0f}<br>VT: %{customdata[4]:,.0f}<extra></extra>",
+            )
+        fig_bub.update_layout(
+            xaxis=dict(title="Chi phí Công (VND)", tickformat=",.0f"),
+            yaxis=dict(title="Chi phí Vật tư (VND)", tickformat=",.0f"),
+            title=dict(text="Bubble chart: Công vs Vật tư theo Lô", font=dict(size=12, color=TM)),
+        )
+        apply_plotly_style(fig_bub, 480)
+        st.plotly_chart(fig_bub, use_container_width=True, key="lo_bubble_exp")
+else:
+    st.info("Không có dữ liệu Lô & Vụ.")
+
+st.markdown("---")
+
 
 # ═════════════════════════════════════════════
 # SECTION 3: ĐỘI — Stacked bar click drill
