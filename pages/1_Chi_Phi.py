@@ -221,6 +221,24 @@ raw_v = load_vt(farm_ids, start_d, end_d, tuple(sel_lo_types), tuple(sel_los),
 to_num(raw_c, ["thanh_tien", "so_cong"])
 to_num(raw_v, ["thanh_tien"])
 
+# Tự động phân loại các vật tư "Không xác định"
+def _map_loai_vat_tu(row):
+    loai = row.get("loai_vat_tu", "")
+    if loai != "Không xác định": 
+        return loai
+    ten = str(row.get("ten_vat_tu", "")).lower()
+    if any(k in ten for k in ["phân", "bio", "calci", "chế phẩm"]):
+        return "Phân Bón"
+    if any(k in ten for k in ["cây", "chuối già"]):
+        return "Cây Giống"
+    if any(k in ten for k in ["xốp", "túi", "băng keo", "bao", "thùng", "carton", "dây", "pallet", "xe gắn máy", "bơm", "máy tính"]):
+        return "Vật Tư Tiêu Hao"
+    return "Không xác định"
+
+if not raw_v.empty and "loai_vat_tu" in raw_v.columns:
+    raw_v["loai_vat_tu"] = raw_v.apply(_map_loai_vat_tu, axis=1)
+
+
 lo_doi_map_df = load_lo_doi_map(farm_ids)
 _doi_to_los: dict = {}
 if not lo_doi_map_df.empty:
