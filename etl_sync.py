@@ -432,7 +432,7 @@ def map_columns(header):
         elif "đvt" in c or "đơn vị" in c:
             continue
         elif "định mức" in c:
-            continue
+            mapping[i] = "dinh_muc"
         elif "loại vật tư" in c:
             continue
     return mapping
@@ -533,6 +533,20 @@ def _resolve_cv(ma_cv, hang_muc, loai_cong, maps, conn, missing_cv):
                 (new_ma_cv, name, loai_cong)
             )
             row = cur.fetchone()
+            record = {
+                "ngay": nk_date_str,
+                "nguoi_thuc_hien": nguoi_thuc_hien,
+                "cong_viec_raw": cv_raw,
+                "lo_raw": lo_raw,
+                "so_cong": so_cong,
+                "klcv": klcv,
+                "dinh_muc": dinh_muc,
+                "ti_le_display": ti_le_display,
+                "don_gia": don_gia,
+                "thanh_tien": thanh_tien,
+                "is_ho_tro": is_ho_tro,
+                "loai_cong": "Ngày"
+            }
             if row:
                 cv_id = row[0]
                 maps["cv"][key] = cv_id
@@ -621,10 +635,17 @@ class ETLProcessor:
             klcv = parse_number(vals.get("klcv"))
             thanh_tien = parse_number(vals.get("thanh_tien"))
             don_gia = parse_number(vals.get("don_gia", 0))
+            dinh_muc = parse_number(vals.get("dinh_muc", 0))
 
             # Tự tính thanh_tien nếu = 0 nhưng có don_gia và so_cong
             if thanh_tien == 0 and don_gia > 0 and so_cong > 0:
                 thanh_tien = so_cong * don_gia
+
+            # Tính ti_le_display
+            ti_le_display = None
+            if so_cong > 0 and dinh_muc > 0:
+                ns_thuc = klcv / so_cong
+                ti_le_display = (ns_thuc / dinh_muc) * 100
 
             # Bỏ qua dòng rỗng
             if so_cong == 0 and klcv == 0 and thanh_tien == 0:
@@ -648,7 +669,7 @@ class ETLProcessor:
 
             self.nk_buffer.append((
                 farm_id, ngay, doi_id, lo_id, cv_id,
-                so_cong, klcv, thanh_tien, is_khoan, False
+                so_cong, klcv, dinh_muc, ti_le_display, thanh_tien, is_khoan, False
             ))
 
     # ── Xử lý Sheet Vật Tư (VT) — Master hoặc Team ──
@@ -731,7 +752,7 @@ class ETLProcessor:
         insert_nk = """
             INSERT INTO fact_nhat_ky_san_xuat (
                 farm_id, ngay, doi_id, lo_id, cong_viec_id,
-                so_cong, klcv, thanh_tien, is_ho_tro
+                so_cong, klcv, dinh_muc, ti_le_display, thanh_tien, is_ho_tro
             ) VALUES %s
             ON CONFLICT ON CONSTRAINT uq_nk_natural_key DO NOTHING
         """
@@ -748,7 +769,7 @@ class ETLProcessor:
         try:
             with self.conn.cursor() as cur:
                 if self.nk_buffer:
-                    vals = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], False)
+                    vals = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], False)
                             for r in self.nk_buffer]
                     before = self._count_rows(cur, "fact_nhat_ky_san_xuat")
                     psycopg2.extras.execute_values(cur, insert_nk, vals, page_size=500)
@@ -785,7 +806,7 @@ class ETLProcessor:
                 insert_nk = """
                     INSERT INTO fact_nhat_ky_san_xuat (
                         farm_id, ngay, doi_id, lo_id, cong_viec_id,
-                        so_cong, klcv, thanh_tien, is_ho_tro
+                        so_cong, klcv, dinh_muc, ti_le_display, thanh_tien, is_ho_tro
                     ) VALUES %s
                     ON CONFLICT ON CONSTRAINT uq_nk_natural_key DO NOTHING
                 """
@@ -797,7 +818,7 @@ class ETLProcessor:
                     ON CONFLICT ON CONSTRAINT uq_vt_natural_key DO NOTHING
                 """
                 if self.nk_buffer:
-                    vals = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], False)
+                    vals = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], False)
                             for r in self.nk_buffer]
                     psycopg2.extras.execute_values(cur, insert_nk, vals, page_size=500)
                 if self.vt_buffer:
