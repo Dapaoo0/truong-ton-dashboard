@@ -14,6 +14,7 @@ Bảng lưu trữ thông tin thực tế công việc hàng ngày của nông tr
 - `don_gia` (NUMERIC): Đơn giá trả cho công việc.
 - `thanh_tien` (NUMERIC): Thành tiền (thường là so_cong * don_gia).
 - `is_ho_tro` (BOOLEAN): Đánh dấu loại công hỗ trợ.
+- `is_estimated` (BOOLEAN, default FALSE): Đánh dấu dữ liệu được ước lượng (imputed). Dùng khi fill data trống bằng phương pháp seasonal adjustment.
 
 ## Bảng `dim_lo`
 - `lo_id` (INT): Khóa chính
