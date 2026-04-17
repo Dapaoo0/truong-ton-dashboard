@@ -38,6 +38,9 @@ with st.sidebar:
     farm_ids = tuple(farms_df[farms_df["farm_code"].isin(sel_farms)]["farm_id"].tolist())
 
     min_d, max_d = load_date_range(farm_ids, has_dinh_muc=True)
+    if pd.isna(min_d) or pd.isna(max_d):
+        st.info("📊 Chưa có dữ liệu Định Mức cho các farm này. ETL cần bổ sung cột `dinh_muc`.")
+        st.stop()
     dr = st.date_input("Thời gian", (min_d, max_d), min_value=min_d, max_value=max_d, key="date_dm")
     if len(dr) != 2: st.stop()
     start_d, end_d = dr
