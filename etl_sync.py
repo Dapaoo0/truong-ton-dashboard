@@ -752,6 +752,19 @@ class ETLProcessor:
                 self.stats["vt_skipped"] += 1
                 continue
 
+            # RULE: Bỏ VT outlier — thanh_tien > 100 triệu VND/record
+            # (Nguyên nhân: nhập sai đơn giá hoặc lẫn đơn mua hàng lô lớn)
+            VT_OUTLIER_THRESHOLD = 100_000_000
+            if thanh_tien > VT_OUTLIER_THRESHOLD:
+                self.stats["vt_skipped"] += 1
+                vt_label = vt_name or vt_code or "?"
+                if not hasattr(self, '_vt_outlier_logged'):
+                    self._vt_outlier_logged = set()
+                key = f"{vt_label}|{ngay}"
+                if key not in self._vt_outlier_logged:
+                    self._vt_outlier_logged.add(key)
+                continue
+
             self.vt_buffer.append((
                 farm_id, lo_id, cv_id, vt_id,
                 ngay, so_luong, don_gia, thanh_tien
