@@ -205,12 +205,12 @@ def load_vt(farm_ids, s, e, lo_types, sel_los, sel_vus=None):
 @st.cache_data(ttl=300)
 def load_lo_doi_map(farm_ids):
     return query(f"""
-        SELECT l.lo_code, d.doi_code, f.farm_code
-        FROM dim_lo_doi ld
-        JOIN dim_lo   l ON l.lo_id  = ld.lo_id
-        JOIN dim_doi  d ON d.doi_id = ld.doi_id
-        JOIN dim_farm f ON f.farm_id = l.farm_id
-        WHERE f.farm_id IN ({','.join(['%s']*len(farm_ids))})
+        SELECT DISTINCT l.lo_code, d.doi_code, f.farm_code
+        FROM fact_nhat_ky_san_xuat nk
+        JOIN dim_lo   l ON l.lo_id  = nk.lo_id
+        JOIN dim_doi  d ON d.doi_id = nk.doi_id
+        JOIN dim_farm f ON f.farm_id = nk.farm_id
+        WHERE nk.farm_id IN ({','.join(['%s']*len(farm_ids))})
     """, list(farm_ids))
 
 raw_c = load_cong(farm_ids, start_d, end_d,
