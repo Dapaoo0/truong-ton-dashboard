@@ -579,9 +579,10 @@ class ETLProcessor:
         }
 
     # ── Xử lý Sheet Nhật Ký (NK) — Master hoặc Team ──
-    def process_cong_sheet(self, data, farm_id, source_name):
+    def process_cong_sheet(self, data, farm_id, source_name, override_doi=None):
         """Xử lý sheet Công/NK (cả Master lẫn Team).
         Hỗ trợ cả 2 kiểu mapping: mã CV (code) lẫn hạng mục (tên).
+        override_doi: Nếu set, dùng tên này thay cho cột 'Đội Thực Hiện' trong GSheet.
         """
         header_idx = detect_header_row(data)
         header = data[header_idx]
@@ -595,6 +596,13 @@ class ETLProcessor:
         if not has_cv_col or not has_num_col:
             print(f"  ⚠️ {source_name}: Thiếu cột cần thiết (mapped: {mapped_names})")
             return
+
+        # Pre-resolve override_doi nếu có
+        override_doi_id = None
+        if override_doi:
+            override_doi_id = _map_value(override_doi, self.maps["doi"], self.missing["doi"])
+            if override_doi_id:
+                print(f"  🔄 Override đội: tất cả rows → '{override_doi}'")
 
         rows = data[header_idx + 1:]
         print(f"  📥 {source_name}: {len(rows)} dòng (header row {header_idx})")
@@ -619,9 +627,12 @@ class ETLProcessor:
             lo_code_val = normalize_text(vals.get("lo_code", ""))
             lo_id = _resolve_lo(lo_raw, lo_code_val, farm_id, self.maps, self.missing["lo"])
 
-            # FK mapping — Đội
-            doi_name = normalize_text(vals.get("doi_name", ""))
-            doi_id = _map_value(doi_name, self.maps["doi"], self.missing["doi"])
+            # FK mapping — Đội (override nếu đọc từ team sheet)
+            if override_doi_id:
+                doi_id = override_doi_id
+            else:
+                doi_name = normalize_text(vals.get("doi_name", ""))
+                doi_id = _map_value(doi_name, self.maps["doi"], self.missing["doi"])
 
             # FK mapping — Công việc (mã CV hoặc tên hạng mục)
             ma_cv = normalize_text(vals.get("ma_cv", ""))
@@ -673,7 +684,7 @@ class ETLProcessor:
             ))
 
     # ── Xử lý Sheet Vật Tư (VT) — Master hoặc Team ──
-    def process_vattu_sheet(self, data, farm_id, source_name):
+    def process_vattu_sheet(self, data, farm_id, source_name, override_doi=None):
         """Xử lý sheet Vật Tư (cả Master lẫn Team)."""
         header_idx = detect_header_row(data)
         header = data[header_idx]
@@ -1044,9 +1055,9 @@ def _process_teams(gc, processor, source, farm_id, farm_label):
 
             tag = f"{farm_label}/{team_name}/{sheet_name}"
             if sheet_type == "nk":
-                processor.process_cong_sheet(data, farm_id, tag)
+                processor.process_cong_sheet(data, farm_id, tag, override_doi=team_name)
             elif sheet_type == "vt":
-                processor.process_vattu_sheet(data, farm_id, tag)
+                processor.process_vattu_sheet(data, farm_id, tag, override_doi=team_name)
 
         time.sleep(2)  # Delay giữa các đội tránh rate limit
 
