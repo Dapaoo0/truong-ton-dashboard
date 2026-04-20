@@ -97,30 +97,30 @@ def load_lo_vu_summary(farm_ids: tuple, s, e, lo_types=(), sel_los=()):
         conds_v.append(f"lv.lo_code IN ({ph_lo})"); params_v += list(sel_los)
 
     cong_df = query(f"""
-        SELECT lc.lo_code, fc.farm_code,
+        SELECT COALESCE(lc.lo_code, 'Khác') as lo_code, fc.farm_code,
                COALESCE(vsr.vu, 'Chưa có vụ') as vu,
                SUM(nk.thanh_tien) as tien_cong,
                SUM(nk.so_cong)    as so_cong
         FROM fact_nhat_ky_san_xuat nk
-        JOIN dim_lo   lc ON lc.lo_id = nk.lo_id
+        LEFT JOIN dim_lo   lc ON lc.lo_id = nk.lo_id
         JOIN dim_farm fc ON fc.farm_id = nk.farm_id
         LEFT JOIN v_season_date_ranges vsr
                ON vsr.lo_id = nk.lo_id AND nk.ngay BETWEEN vsr.vu_start AND vsr.vu_end
         WHERE {' AND '.join(conds_c)}
-        GROUP BY lc.lo_code, fc.farm_code, vsr.vu
+        GROUP BY COALESCE(lc.lo_code, 'Khác'), fc.farm_code, vsr.vu
     """, params_c)
 
     vt_df = query(f"""
-        SELECT lv.lo_code, fv.farm_code,
+        SELECT COALESCE(lv.lo_code, 'Khác') as lo_code, fv.farm_code,
                COALESCE(vsr.vu, 'Chưa có vụ') as vu,
                SUM(vt.thanh_tien) as tien_vt
         FROM fact_vat_tu vt
-        JOIN dim_lo   lv ON lv.lo_id = vt.lo_id
+        LEFT JOIN dim_lo   lv ON lv.lo_id = vt.lo_id
         JOIN dim_farm fv ON fv.farm_id = vt.farm_id
         LEFT JOIN v_season_date_ranges vsr
                ON vsr.lo_id = vt.lo_id AND vt.ngay BETWEEN vsr.vu_start AND vsr.vu_end
         WHERE {' AND '.join(conds_v)}
-        GROUP BY lv.lo_code, fv.farm_code, vsr.vu
+        GROUP BY COALESCE(lv.lo_code, 'Khác'), fv.farm_code, vsr.vu
     """, params_v)
 
     if cong_df.empty and vt_df.empty:

@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2026-04-20
+### Fixed
+- **DB: Xóa outlier NK 335 công** — Xóa 1 record bất thường: NT1, Farm 157, 23/03/2026, "Chẻ + Cắm Tiêu Định Vị" lô B5, 335 công = 83.75 triệu (P99 toàn farm chỉ 10.5 công).
+- **DB: Chuyển base_lot lô "11" → "11A"** — Đợt trồng 22/01/2026 (2,737 cây) gắn đúng vào lô 11A (lo_id=77).
+
+### Added
+- **Cột `dien_tich_trong`** — Thêm cột `NUMERIC(8,2)` vào `base_lots` lưu diện tích trồng thực tế (ha) cho 18 đợt trồng Farm 157.
+- **ETL: NK outlier filter** — Thêm rule skip records công có `thanh_tien > 20 triệu VND/record` (nguyên nhân: nhập sai số công). Áp dụng song song với VT outlier filter (100 triệu).
+
 ## [Unreleased]
 - Added ETL sync for Dinh Muc
 

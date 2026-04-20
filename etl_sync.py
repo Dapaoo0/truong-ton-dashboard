@@ -674,6 +674,13 @@ class ETLProcessor:
                 self.stats["nk_skipped"] += 1
                 continue
 
+            # RULE: Bỏ NK outlier — thanh_tien > 20 triệu VND/record
+            # (Nguyên nhân: nhập sai số công hoặc đơn giá bất thường)
+            NK_OUTLIER_THRESHOLD = 20_000_000
+            if thanh_tien > NK_OUTLIER_THRESHOLD:
+                self.stats["nk_skipped"] += 1
+                continue
+
             # is_khoan
             loai_cong = normalize_text(vals.get("loai_cong", "")).lower()
             is_khoan = "kho" in loai_cong  # "Khoán" → True
