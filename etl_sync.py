@@ -681,6 +681,12 @@ class ETLProcessor:
                 self.stats["nk_skipped"] += 1
                 continue
 
+            # RULE: Bỏ NK outlier — so_cong > 10/record
+            # (1 dòng không thể > 10 công, thường là lỗi nhập liệu)
+            if so_cong > 10:
+                self.stats["nk_skipped"] += 1
+                continue
+
             # is_khoan
             loai_cong = normalize_text(vals.get("loai_cong", "")).lower()
             is_khoan = "kho" in loai_cong  # "Khoán" → True
