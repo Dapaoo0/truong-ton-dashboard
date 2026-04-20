@@ -826,7 +826,12 @@ class ETLProcessor:
     def full_reload(self, farm_ids):
         """Xoá dữ liệu 1 THÁNG GẦN NHẤT của các farm, rồi insert lại + dedup.
         Data cũ hơn 1 tháng được giữ nguyên (đã cleanup thủ công).
+        Chỉ insert records trong 1 tháng gần nhất — KHÔNG động vào data cũ.
         """
+        from datetime import date
+        from dateutil.relativedelta import relativedelta
+        cutoff_date = date.today() - relativedelta(months=1)
+
         try:
             with self.conn.cursor() as cur:
                 ph = ",".join(["%s"] * len(farm_ids))
@@ -837,6 +842,24 @@ class ETLProcessor:
                 cur.execute(f"DELETE FROM fact_vat_tu WHERE farm_id IN ({ph}) AND ngay >= {cutoff_sql}", farm_ids)
                 del_vt = cur.rowcount
                 print(f"🗑️ Đã xoá (1 tháng gần nhất): {del_nk} NK + {del_vt} VT")
+
+                # Filter buffer: chỉ giữ records trong 1 tháng gần nhất
+                # nk_buffer: (farm_id, ngay, ...) → index 1 = ngay
+                # vt_buffer: (farm_id, lo_id, cv_id, vt_id, ngay, ...) → index 4 = ngay
+                def _is_recent(ngay_val):
+                    if isinstance(ngay_val, str):
+                        try:
+                            ngay_val = date.fromisoformat(ngay_val)
+                        except ValueError:
+                            return False
+                    return ngay_val >= cutoff_date
+
+                nk_recent = [r for r in self.nk_buffer if _is_recent(r[1])]
+                vt_recent = [r for r in self.vt_buffer if _is_recent(r[4])]
+                nk_skipped = len(self.nk_buffer) - len(nk_recent)
+                vt_skipped = len(self.vt_buffer) - len(vt_recent)
+                if nk_skipped or vt_skipped:
+                    print(f"🔒 Bỏ qua data cũ: {nk_skipped} NK + {vt_skipped} VT (trước {cutoff_date})")
 
                 insert_nk = """
                     INSERT INTO fact_nhat_ky_san_xuat (
@@ -852,15 +875,15 @@ class ETLProcessor:
                     ) VALUES %s
                     ON CONFLICT ON CONSTRAINT uq_vt_natural_key DO NOTHING
                 """
-                if self.nk_buffer:
+                if nk_recent:
                     vals = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7], r[8], r[9], False)
-                            for r in self.nk_buffer]
+                            for r in nk_recent]
                     psycopg2.extras.execute_values(cur, insert_nk, vals, page_size=500)
-                if self.vt_buffer:
-                    psycopg2.extras.execute_values(cur, insert_vt, self.vt_buffer, page_size=500)
+                if vt_recent:
+                    psycopg2.extras.execute_values(cur, insert_vt, vt_recent, page_size=500)
 
                 self.conn.commit()
-            print(f"✅ Full Reload: {len(self.nk_buffer)} NK + {len(self.vt_buffer)} VT inserted")
+            print(f"✅ Full Reload: {len(nk_recent)} NK + {len(vt_recent)} VT inserted (chỉ 1 tháng)")
 
             # Dedup: loại bỏ duplicate dựa trên natural key (NULL-safe)
             self._dedup()
