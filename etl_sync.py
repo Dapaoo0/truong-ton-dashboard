@@ -681,12 +681,6 @@ class ETLProcessor:
                 self.stats["nk_skipped"] += 1
                 continue
 
-            # RULE: Bỏ NK outlier — so_cong > 10/record
-            # (1 dòng không thể > 10 công, thường là lỗi nhập liệu)
-            if so_cong > 10:
-                self.stats["nk_skipped"] += 1
-                continue
-
             # is_khoan
             loai_cong = normalize_text(vals.get("loai_cong", "")).lower()
             is_khoan = "kho" in loai_cong  # "Khoán" → True
@@ -830,15 +824,19 @@ class ETLProcessor:
             raise
 
     def full_reload(self, farm_ids):
-        """Xoá dữ liệu cũ của các farm, rồi insert lại + dedup."""
+        """Xoá dữ liệu 1 THÁNG GẦN NHẤT của các farm, rồi insert lại + dedup.
+        Data cũ hơn 1 tháng được giữ nguyên (đã cleanup thủ công).
+        """
         try:
             with self.conn.cursor() as cur:
                 ph = ",".join(["%s"] * len(farm_ids))
-                cur.execute(f"DELETE FROM fact_nhat_ky_san_xuat WHERE farm_id IN ({ph})", farm_ids)
+                # Chỉ xóa 1 tháng gần nhất
+                cutoff_sql = "CURRENT_DATE - INTERVAL '1 month'"
+                cur.execute(f"DELETE FROM fact_nhat_ky_san_xuat WHERE farm_id IN ({ph}) AND ngay >= {cutoff_sql}", farm_ids)
                 del_nk = cur.rowcount
-                cur.execute(f"DELETE FROM fact_vat_tu WHERE farm_id IN ({ph})", farm_ids)
+                cur.execute(f"DELETE FROM fact_vat_tu WHERE farm_id IN ({ph}) AND ngay >= {cutoff_sql}", farm_ids)
                 del_vt = cur.rowcount
-                print(f"🗑️ Đã xoá: {del_nk} NK + {del_vt} VT")
+                print(f"🗑️ Đã xoá (1 tháng gần nhất): {del_nk} NK + {del_vt} VT")
 
                 insert_nk = """
                     INSERT INTO fact_nhat_ky_san_xuat (
