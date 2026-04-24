@@ -1,0 +1,71 @@
+============================================================
+🏠 Farm 195 — Công (fact) — KIỂM TRA HEADER
+============================================================
+
+ĐẦY ĐỦ HEADER (17 cột):
+  [0] = "Mã CV"
+  [1] = "Lô"
+  [2] = "Lô 2"
+  [3] = "Đội Thực Hiện"
+  [4] = "Ngày"
+  [5] = "Hạng mục công việc"
+  [6] = "Loại công"
+  [7] = "Số Công"
+  [8] = "KLCV"
+  [9] = "ĐVT"
+  [10] = "Đơn Giá"
+  [11] = "Định Mức"
+  [12] = "Thành Tiền"
+  [13] = "Công Đoạn"
+  [14] = "Ghi Chú"
+  [15] = "Hỗ Trợ Đội Khác"
+  [16] = "Hạng mục dự toán công"
+
+--- 10 dòng có dữ liệu (cột 0-16) ---
+  Row 1: hm_cv="Phát Sinh Vườn Ươm" | hm_du_toan="Ươm giống" | ngay=24/12/2025 so_cong=5.0
+  Row 2: hm_cv="Sửa Chửa Bảo Trì" | hm_du_toan="" | ngay=24/12/2025 so_cong=1.0
+  Row 3: hm_cv="Bảo vệ" | hm_du_toan="" | ngay=24/12/2025 so_cong=1.0
+  Row 4: hm_cv="Phát Sinh Vườn Ươm" | hm_du_toan="" | ngay=27/12/2025 so_cong=3.0
+  Row 5: hm_cv="Chạy Xe Cuốc" | hm_du_toan="Chuẩn bị đất" | ngay=27/12/2025 so_cong=2.0
+  Row 6: hm_cv="Phát Sinh Vườn Ươm" | hm_du_toan="Ươm giống" | ngay=29/12/2025 so_cong=3.0
+  Row 7: hm_cv="Chạy Xe Cuốc" | hm_du_toan="Chuẩn bị đất" | ngay=29/12/2025 so_cong=2.0
+  Row 8: hm_cv="Khoan Hố" | hm_du_toan="Chuẩn bị đất" | ngay=30/12/2025 so_cong=1.5
+  Row 9: hm_cv="Phát Sinh Vườn Ươm" | hm_du_toan="Ươm giống" | ngay=30/12/2025 so_cong=1.5
+  Row 10: hm_cv="Phát Sinh Cơ giới" | hm_du_toan="" | ngay=30/12/2025 so_cong=2.0
+
+--- THỐNG KÊ CỘT ---
+  'Hạng mục công việc' (col 5): 821 có dữ liệu, 4310 rỗng
+  'Hạng mục dự toán' (col 16): 327 có dữ liệu, 4804 rỗng
+
+============================================================
+🏠 Farm 195 — Vật Tư (fact) — KIỂM TRA HEADER
+============================================================
+
+ĐẦY ĐỦ HEADER (13 cột):
+  [0] = "Mã CV"
+  [1] = "Lô"
+  [2] = "Lô 2"
+  [3] = "Ngày"
+  [4] = "Hạng mục công việc"
+  [5] = "Vật Tư"
+  [6] = "SL"
+  [7] = "ĐVT"
+  [8] = "Đơn Giá"
+  [9] = "Thành Tiền"
+  [10] = "Công Đoạn"
+  [11] = "Loại Vật Tư"
+  [12] = "Hạng mục dự toán vật tư"
+
+--- 10 dòng có dữ liệu ---
+  Row 1: hm_cv="Phát Sinh Vườn Ươm" | vt=" Kẽm " | ngay=16/01/2026
+  Row 2: hm_cv="Phát Sinh Khác" | vt=" Lưới đen " | ngay=16/01/2026
+  Row 3: hm_cv="Phát Sinh Khác" | vt=" Màn phủ " | ngay=16/01/2026
+  Row 4: hm_cv="Thi Công Vườn Ươm" | vt=" Bạt " | ngay=17/01/2026
+  Row 5: hm_cv="Thi Công Vườn Ươm" | vt=" Lưới đen " | ngay=17/01/2026
+  Row 6: hm_cv="Thi Công Vườn Ươm" | vt=" Tôn " | ngay=17/01/2026
+  Row 7: hm_cv="Thi Công Vườn Ươm" | vt=" Pallet " | ngay=17/01/2026
+  Row 8: hm_cv="Thi Công Vườn Ươm" | vt=" Lưới đen " | ngay=17/01/2026
+  Row 9: hm_cv="Thi Công Vườn Ươm" | vt=" Ống 114 " | ngay=17/01/2026
+  Row 10: hm_cv="Phát Sinh Vườn Ươm" | vt=" Vôi bột (30kg/Bao) " | ngay=18/01/2026
+
+  'Hạng mục công việc' (col 4): 139 có, 3856 rỗng

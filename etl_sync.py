@@ -291,24 +291,15 @@ def load_dim_maps(conn):
             maps["lo_by_farm_ci"][(r["farm_id"], code.lower())] = r["lo_id"]
         print(f"  dim_lo: {len(maps['lo'])} entries")
 
-        # Công Việc: LOWER(ten_cong_viec) → cong_viec_id + ma_cv → cong_viec_id
-        cur.execute("SELECT cong_viec_id, ma_cv, ten_cong_viec, cong_doan FROM dim_cong_viec")
+        # Công Việc: LOWER(ten_cong_viec) → cong_viec_id (name-only lookup)
+        cur.execute("SELECT cong_viec_id, ten_cong_viec, cong_doan FROM dim_cong_viec")
         maps["cv"] = {}       # lower(ten_cv) → cong_viec_id
-        maps["cv_by_ma"] = {} # ma_cv → cong_viec_id (fallback)
-        maps["cv_max_seq"] = {}  # group → max sequence number (for auto-gen)
         for r in cur.fetchall():
             if r["ten_cong_viec"]:
                 key = r["ten_cong_viec"].strip().lower()
                 if key not in maps["cv"]:  # giữ entry đầu tiên
                     maps["cv"][key] = r["cong_viec_id"]
-            if r["ma_cv"]:
-                maps["cv_by_ma"][r["ma_cv"].strip()] = r["cong_viec_id"]
-                # Track max seq per group cho auto-gen mã
-                m = re.match(r"(\d+)-(\d+)", r["ma_cv"].strip())
-                if m:
-                    grp, seq = int(m.group(1)), int(m.group(2))
-                    maps["cv_max_seq"][grp] = max(maps["cv_max_seq"].get(grp, 0), seq)
-        print(f"  dim_cong_viec: {len(maps['cv'])} by name, {len(maps['cv_by_ma'])} by ma_cv")
+        print(f"  dim_cong_viec: {len(maps['cv'])} by name")
 
         # Vật Tư: ma_vat_tu → vat_tu_id
         cur.execute("SELECT vat_tu_id, ma_vat_tu, ten_vat_tu FROM dim_vat_tu")
@@ -490,24 +481,17 @@ def _resolve_lo(lo_raw, lo_code_val, farm_id, maps, missing_lo):
 
 
 def _resolve_cv(ma_cv, hang_muc, loai_cong, maps, conn, missing_cv):
-    """Resolve công việc ID. Thử mã CV trước, rồi tên (case-insensitive), auto-insert nếu mới.
+    """Resolve công việc ID chỉ bằng tên (case-insensitive).
+    ma_cv từ sheet được bỏ qua — DB dùng mã chung thống nhất.
     
     Returns: cong_viec_id hoặc None
     """
-    cv_id = None
-
-    # 1) Thử mã CV (team sheets thường dùng mã)
-    if ma_cv:
-        cv_id = maps["cv_by_ma"].get(ma_cv)
-        if cv_id:
-            return cv_id
-
-    # 2) Thử tên hạng mục (master sheets thường dùng tên)
+    # 1) Thử tên hạng mục (case-insensitive)
     name = normalize_text(hang_muc)
     if not name:
-        # Nếu không có cả ma_cv lẫn hang_muc → missing
-        if ma_cv:
-            missing_cv.add(ma_cv)
+        # Fallback: dùng ma_cv từ sheet như tên nếu không có hang_muc
+        name = normalize_text(ma_cv)
+    if not name:
         return None
 
     key = name.lower()
@@ -515,52 +499,9 @@ def _resolve_cv(ma_cv, hang_muc, loai_cong, maps, conn, missing_cv):
     if cv_id:
         return cv_id
 
-    # 3) Auto-insert vào dim_cong_viec nếu tên mới
-    loai = normalize_text(loai_cong).lower()
-    suffix = "k" if "kho" in loai else "n"
-    grp = 99
-    seq = maps["cv_max_seq"].get(grp, 0) + 1
-    maps["cv_max_seq"][grp] = seq
-    new_ma_cv = f"{grp}-{seq:02d}{suffix}"
-
-    try:
-        with conn.cursor() as cur:
-            cur.execute(
-                """INSERT INTO dim_cong_viec (ma_cv, ten_cong_viec, loai_cong)
-                   VALUES (%s, %s, %s)
-                   ON CONFLICT (ma_cv) DO NOTHING
-                   RETURNING cong_viec_id""",
-                (new_ma_cv, name, loai_cong)
-            )
-            row = cur.fetchone()
-            record = {
-                "ngay": nk_date_str,
-                "nguoi_thuc_hien": nguoi_thuc_hien,
-                "cong_viec_raw": cv_raw,
-                "lo_raw": lo_raw,
-                "so_cong": so_cong,
-                "klcv": klcv,
-                "dinh_muc": dinh_muc,
-                "ti_le_display": ti_le_display,
-                "don_gia": don_gia,
-                "thanh_tien": thanh_tien,
-                "is_ho_tro": is_ho_tro,
-                "loai_cong": "Ngày"
-            }
-            if row:
-                cv_id = row[0]
-                maps["cv"][key] = cv_id
-                maps["cv_by_ma"][new_ma_cv] = cv_id
-                conn.commit()
-                return cv_id
-            else:
-                conn.rollback()
-                missing_cv.add(name)
-                return None
-    except Exception:
-        conn.rollback()
-        missing_cv.add(name)
-        return None
+    # 2) Không tìm thấy → report missing, KHÔNG tự động tạo mới
+    missing_cv.add(name)
+    return None
 
 
 # ──────────────────────────────────────────────────────────────

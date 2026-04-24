@@ -1,0 +1,74 @@
+============================================================
+Farm 157 — Công (fact) — Chích Bắp raw data
+============================================================
+Header (17 cols):
+  [0] = "STT"
+  [1] = "Mã CV"
+  [2] = "Lô"
+  [3] = "Lô 2"
+  [4] = "Đội Thực Hiện"
+  [5] = "Ngày"
+  [6] = "Hạng mục công việc"
+  [7] = "Loại công"
+  [8] = "Số Công"
+  [9] = "KLCV"
+  [10] = "ĐVT"
+  [11] = "Đơn Giá"
+  [12] = "Định Mức"
+  [13] = "Thành Tiền"
+  [14] = "Công Đoạn"
+  [15] = "Ghi Chú"
+  [16] = "Hỗ Trợ Đội Khác"
+
+Cột Lô=2, Lô 2=3, Hạng mục=6, Đội=16
+
+Tổng dòng Chích Bắp: 665
+
+--- Sample 15 dòng đầu ---
+  Row 462: Lô="3A" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 463: Lô="1B" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 464: Lô="14A" | Lô2="NT3+NT4" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 465: Lô="12B" | Lô2="NT3+NT4" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 466: Lô="5" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 483: Lô="6" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 484: Lô="7A" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 485: Lô="1B" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 486: Lô="2" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 487: Lô="12A" | Lô2="NT3+NT4" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 488: Lô="12B" | Lô2="NT3+NT4" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 489: Lô="11" | Lô2="NT3+NT4" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 505: Lô="1B" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 506: Lô="12A" | Lô2="NT3+NT4" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+  Row 507: Lô="8A" | Lô2="NT1+NT2" | Đội="" | Ngày=Đội BVTV | HM=Chích bắp
+
+--- Unique cột 'Lô' (col 2) ---
+    87x  ""
+    58x  "15B"
+    43x  "14B"
+    42x  "1B"
+    41x  "9"
+    39x  "10"
+    36x  "8A"
+    35x  "12B"
+    35x  "7A"
+    35x  "11"
+    35x  "4"
+    32x  "6"
+    32x  "12A"
+    28x  "14A"
+    26x  "7B"
+    22x  "3B"
+    20x  "3A"
+    13x  "2"
+     1x  "5"
+     1x  "Farm 157"
+     1x  "15A"
+     1x  "15b"
+     1x  "8a"
+     1x  "7b"
+
+--- Unique cột 'Lô 2' (col 3) ---
+   329x  "NT3+NT4"
+   248x  "NT1+NT2"
+    87x  ""
+     1x  "Farm 157"

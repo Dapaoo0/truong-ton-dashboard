@@ -1,0 +1,297 @@
+
+============================================================
+🏠 Farm 126
+============================================================
+
+  📂 Farm 126 MASTER
+     ID: 1FJFVAUnDLp4C2w6n4le4iVNPUVdhYandy8NQaf2bcB0
+     ✅ OK — Title: "BÁO CÁO TỔNG HỢP "
+     📄 Sheet: "Công (fact)" (6527 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV']
+        Row 1: ['304', '5-12n', 'Đội 2A', '2A', 'Đội 1A', '13/08/2025', 'Tổ Trưởng 1A', 'Nhật', '1.0', '1']
+        Row 2: ['496', '6-02n', 'Đội 2A', '2A', 'Thu Hoạch', '13/08/2025', 'Tổ Trưởng Thu Hoạch', 'Nhật', '1.0', '1']
+     📄 Sheet: "Tổng Hợp Công Theo Lô" (26 rows)
+        Row 1: ['Ngày Bắt Đầu', '13/08/2025', 'BẢNG TỔNG HỢP CÔNG TỪ NGÀY 13/8/2025 ĐẾN NGÀY 31/10/2025 TẠI LÔ 1B DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '31/10/2025']
+        Row 3: ['Vườn', '1B']
+     📄 Sheet: "Pivot Table 14" (41 rows)
+        Row 0: ['Ngày', 'Hạng mục công việc', 'SUM of Thành Tiền', 'SUM of KLCV', 'SUM of Số Công']
+        Row 1: ['16/12/2025', 'Chạy Xe Cày', '900,000', '3', '3.0']
+        Row 2: ['Chạy Xe Cuốc', '460,000', '1', '1.0']
+     📄 Sheet: "Vật Tư (fact)" (4282 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá']
+        Row 1: ['282', '8-01k', 'D3', 'NT2', '01/08/2025', 'Phun Bay Drone - Nấm/Sigatoka', 'Famycin (120g)', '131', 'g', '491.67']
+        Row 2: ['161', '4-01n', 'D1', 'NT2', '01/08/2025', 'Bón phân qua hệ thống tưới', 'Phân Kali Clorua (KCL)', '375', 'kg', '18,360.00']
+     📄 Sheet: "Tổng Hợp Công Theo Đội" (333 rows)
+        Row 1: ['Ngày Bắt Đầu', '01/08/2025', 'BẢNG TỔNG HỢP CÔNG SO VỚI HCNS TỪ NGÀY 1/8/2025 ĐẾN NGÀY 3/10/2025 DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '03/10/2025']
+        Row 4: ['ID_Công Việc', 'Lô', 'Cột Tính Toán (Ẩn)', 'Cột Tính Toán (Ẩn)', 'Cột Tính Toán (Ẩn)', 'Cột Tính Toán (Ẩn)', 'Hạng mục công việc', 'ĐVT', 'Loại công', 'Số công thực hiện']
+     📄 Sheet: "Tổng Hợp Vật Tư" (1010 rows)
+        Row 1: ['Ngày Bắt Đầu', '04/08/2025', 'BẢNG TỔNG HỢP VẬT TƯ TỪ NGÀY 4/8/2025 ĐẾN NGÀY 15/10/2025 TẠI LÔ 2A DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '15/10/2025']
+        Row 3: ['Lô', '2A']
+     📄 Sheet: "Đơn Giá Vật Tư" (125 rows)
+        Row 1: ['BẢNG ĐỊNH MỨC VẬT TƯ']
+        Row 2: ['STT', 'Tên vật tư', 'ĐVT', 'Giá thành', 'Loại Vật Tư', 'Ghi chú']
+        Row 3: ['1', 'Streptomicin (72%)', 'lít', '1,100,000.00', 'Bảo Vệ Thực Vật']
+     📄 Sheet: "Định Mức Công" (107 rows)
+        Row 1: ['1-16', 'kẢNG ĐỊNH MỨC CÔNG VIỆC']
+        Row 2: ['1-15', 'ID', 'Công Đoạn', 'Hạng mục công việc', 'ĐVT\n (theo Định mức)', 'Định mức\n (trên 1 công)', 'Định mức cũ', 'Loại Công', 'Giá Trên 1 ĐVT', 'Giá cũ']
+        Row 3: ['1-01n', 'Chăm sóc vườn', 'Làm Cỏ Thủ Công', 'Cây', '300.00', '315,00', 'Nhật', '250,000 ₫', '220.000 ₫', 'Nặng Nhọc']
+     📄 Sheet: "Lô" (35 rows)
+        Row 1: ['BẢNG CHI TIẾT CÁC LÔ DỰ ÁN 126']
+        Row 2: ['STT', 'Tên Vườn', 'Tên Cũ', 'Diện tích (ha)', 'Số cây', 'Đội', 'Phụ Trách']
+        Row 3: ['1', 'A1', 'I-A1, I-A3, I-A5', '3.30', '4,274.00', 'NT1']
+     📄 Sheet: "Readme" (69 rows)
+        Row 0: ['# Nhập liệu theo dõi dự án 126']
+        Row 2: ['##  Description']
+        Row 3: ['Nhập liệu theo dõi công và chi phí theo lô và các đội, gồm:']
+     📄 Sheet: "Biểu Đồ" (8 rows)
+        Row 0: ['Ngày Bắt Đầu', '01/08/2025']
+        Row 1: ['Ngày Kết Thúc', '31/08/2025']
+        Row 3: ['Lô', 'Chí Phí Nhân Công', 'Chi Phí Vật Tư', 'Số Công']
+     📄 Sheet: "Sheet33" (17 rows)
+        Row 0: ['Ngày', 'Số Công The0 BCTH', 'Số Công Theo HCNS']
+        Row 1: ['01/08/2025', '9', '8']
+        Row 2: ['02/08/2025', '9', '8']
+
+  📂 Đội NT1
+     ID: 1K7IxcAeZ_Qe82mLSDo2nM8PaZxdqe52TNPsgCpCY8aQ
+     ✅ OK — Title: "Đội 1 - 126"
+     📄 Sheet: "Công (fact)" (6037 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV']
+        Row 1: ['1', '4-08n', 'B5', 'NT1', 'NT1', '05/01/2026', 'Thu Gom Ống Nước/Thu Hồi Hệ Thống Tưới', 'Nhật', '2.0', '1,5']
+        Row 2: ['2', '1-01n', 'Vườn Ươm', 'Vườn Ươm', 'NT1', '05/01/2026', 'Làm Cỏ Thủ Công', 'Nhật', '2.0', '7,000.0']
+     📄 Sheet: "Tổng Hợp Công Theo Lô" (28 rows)
+        Row 1: ['Ngày Bắt Đầu', '08/01/2026', 'BẢNG TỔNG HỢP CÔNG TỪ NGÀY 8/1/2026 ĐẾN NGÀY 11/1/2026 TẠI LÔ T1 DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '11/01/2026']
+        Row 3: ['Vườn', 'NT1']
+     📄 Sheet: "Vật Tư (fact)" (3996 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá']
+        Row 1: ['1', '1-13n', 'A8', 'NT1', '07/01/2026', 'Bón Phân Hóa Học', 'Phân DAP (bao 50kg)', '650', 'kg', '23,220.00']
+        Row 2: ['2', '1-25n', 'A8', 'NT1', '08/01/2026', 'Bón Rải Lấp Phân Tay', 'Phân Lân Văn Điền (50Kg/Bao)', '650', 'kg', '6,800.00']
+     📄 Sheet: "Tổng Hợp Vật Tư" (1010 rows)
+        Row 1: ['Ngày Bắt Đầu', '04/08/2025', 'BẢNG TỔNG HỢP VẬT TƯ TỪ NGÀY 4/8/2025 ĐẾN NGÀY 15/10/2025 TẠI LÔ 2A DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '15/10/2025']
+        Row 3: ['Lô', '2A']
+     📄 Sheet: "Đơn Giá Vật Tư" (125 rows)
+        Row 1: ['BẢNG ĐỊNH MỨC VẬT TƯ']
+        Row 2: ['STT', 'Tên vật tư', 'ĐVT', 'Giá thành', 'Loại Vật Tư', 'Ghi chú']
+        Row 3: ['1', 'Streptomicin (72%)', 'lít', '1,100,000.00', 'Bảo Vệ Thực Vật']
+     📄 Sheet: "Định Mức Công" (109 rows)
+        Row 1: ['1-16', 'kẢNG ĐỊNH MỨC CÔNG VIỆC']
+        Row 2: ['1-15', 'ID', 'Công Đoạn', 'Hạng mục công việc', 'ĐVT\n (theo Định mức)', 'Định mức\n (trên 1 công)', 'Định mức cũ', 'Loại Công', 'Giá Trên 1 ĐVT', 'Giá cũ']
+        Row 3: ['1-01n', 'Chăm sóc vườn', 'Làm Cỏ Thủ Công', 'Cây', '300.00', '315,00', 'Nhật', '250,000 ₫', '220.000 ₫', 'Nặng Nhọc']
+     📄 Sheet: "Lô" (34 rows)
+        Row 1: ['BẢNG CHI TIẾT CÁC LÔ DỰ ÁN 126']
+        Row 2: ['STT', 'Tên Vườn', 'Tên Cũ', 'Diện tích (ha)', 'Số cây', 'Đội', 'Phụ Trách']
+        Row 3: ['1', 'A1', 'I-A1, I-A3, I-A5', '3.30', '4,274.00', 'NT1']
+
+  📂 Đội NT2
+     ID: 1tMl4yhmStVjGsVhem3ICgfw9W10JVly9Y49uPPSFytA
+     ✅ OK — Title: "Đội 2 - 126"
+     📄 Sheet: "Công (fact)" (6037 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV']
+        Row 1: ['1', '2-04n', 'C1', 'NT2', 'NT2', '02/01/2026', 'Vệ Sinh Buồng', 'Nhật', '1.0', '400.0']
+        Row 2: ['2', '2-04n', 'D3', 'NT2', 'NT2', '02/01/2026', 'Vệ Sinh Buồng', 'Nhật', '0.5', '200.0']
+     📄 Sheet: "Tổng Hợp Công Theo Lô" (53 rows)
+        Row 1: ['Ngày Bắt Đầu', '12/01/2026', 'BẢNG TỔNG HỢP CÔNG TỪ NGÀY 12/1/2026 ĐẾN NGÀY 16/1/2026 TẠI LÔ T2 DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '16/01/2026']
+        Row 3: ['Vườn', 'NT2']
+     📄 Sheet: "Lô" (34 rows)
+        Row 1: ['BẢNG CHI TIẾT CÁC LÔ DỰ ÁN 126']
+        Row 2: ['STT', 'Tên Vườn', 'Tên Cũ', 'Diện tích (ha)', 'Số cây', 'Đội', 'Phụ Trách']
+        Row 3: ['1', 'A1', 'I-A1, I-A3, I-A5', '3.30', '4,274.00', 'NT1']
+     📄 Sheet: "Tổng Hợp Vật Tư" (1010 rows)
+        Row 1: ['Ngày Bắt Đầu', '04/08/2025', 'BẢNG TỔNG HỢP VẬT TƯ TỪ NGÀY 4/8/2025 ĐẾN NGÀY 15/10/2025 TẠI LÔ 2A DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '15/10/2025']
+        Row 3: ['Lô', '2A']
+     📄 Sheet: "Đơn Giá Vật Tư" (126 rows)
+        Row 1: ['BẢNG ĐỊNH MỨC VẬT TƯ']
+        Row 2: ['STT', 'Tên vật tư', 'ĐVT', 'Giá thành', 'Loại Vật Tư', 'Ghi chú']
+        Row 3: ['1', 'Streptomicin (72%)', 'lít', '1,100,000.00', 'Bảo Vệ Thực Vật']
+     📄 Sheet: "Vật Tư (fact)" (3996 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá']
+        Row 1: ['1', '1-17n', 'D1', 'NT2', '03/01/2026', 'Xử Lý Fusarium/ Xử Lý Cây Bệnh', 'Vôi bột (30kg/Bao)', '150', 'kg', '2,918.10']
+        Row 2: ['2', '2-02k', 'C1', 'NT2', '03/01/2026', 'Bẻ Hoa', 'Giấy Vệ Sinh', '1', 'kg', '16,200.00']
+     📄 Sheet: "Định Mức Công" (109 rows)
+        Row 1: ['1-16', 'kẢNG ĐỊNH MỨC CÔNG VIỆC']
+        Row 2: ['1-15', 'ID', 'Công Đoạn', 'Hạng mục công việc', 'ĐVT\n (theo Định mức)', 'Định mức\n (trên 1 công)', 'Định mức cũ', 'Loại Công', 'Giá Trên 1 ĐVT', 'Giá cũ']
+        Row 3: ['1-01n', 'Chăm sóc vườn', 'Làm Cỏ Thủ Công', 'Cây', '300.00', '315,00', 'Nhật', '250,000 ₫', '220.000 ₫', 'Nặng Nhọc']
+
+  📂 Đội BVTV
+     ID: 17rQY5n--JLht6KuU3Vmg7lhqgzxpommcYeCc7jQJVf4
+     ✅ OK — Title: "Đội BVTV - 126"
+     📄 Sheet: "Công (fact)" (6021 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV']
+        Row 1: ['0']
+        Row 2: ['0']
+     📄 Sheet: "Tổng Hợp Công Theo Lô" (26 rows)
+        Row 1: ['Ngày Bắt Đầu', '13/08/2025', 'BẢNG TỔNG HỢP CÔNG TỪ NGÀY 13/8/2025 ĐẾN NGÀY 31/10/2025 TẠI LÔ 1A DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '31/10/2025']
+        Row 3: ['Vườn', '1A']
+     📄 Sheet: "Vật Tư (fact)" (3996 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá']
+        Row 1: ['1', '3-04n', 'Farm 126', 'Farm 126', '02/01/2026', 'Phun Xe Cày - Sigatoka', 'HoangAnhBul 72wp', '3', 'kg', '0.0']
+        Row 2: ['2', '3-04n', 'Farm 126', 'Farm 126', '02/01/2026', 'Phun Xe Cày - Sigatoka', 'VIP BO', '1000', 'ml', '0.0']
+     📄 Sheet: "Tổng Hợp Vật Tư" (1010 rows)
+        Row 1: ['Ngày Bắt Đầu', '04/08/2025', 'BẢNG TỔNG HỢP VẬT TƯ TỪ NGÀY 4/8/2025 ĐẾN NGÀY 15/10/2025 TẠI LÔ 2A DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '15/10/2025']
+        Row 3: ['Lô', '2A']
+     📄 Sheet: "Đơn Giá Vật Tư" (127 rows)
+        Row 1: ['BẢNG ĐỊNH MỨC VẬT TƯ']
+        Row 2: ['STT', 'Tên vật tư', 'ĐVT', 'Giá thành', 'Loại Vật Tư', 'Ghi chú']
+        Row 3: ['1', 'Streptomicin (72%)', 'lít', '1,100,000.00', 'Bảo Vệ Thực Vật']
+     📄 Sheet: "Định Mức Công" (107 rows)
+        Row 1: ['1-16', 'kẢNG ĐỊNH MỨC CÔNG VIỆC']
+        Row 2: ['1-15', 'ID', 'Công Đoạn', 'Hạng mục công việc', 'ĐVT\n (theo Định mức)', 'Định mức\n (trên 1 công)', 'Định mức cũ', 'Loại Công', 'Giá Trên 1 ĐVT', 'Giá cũ']
+        Row 3: ['1-01n', 'Chăm sóc vườn', 'Làm Cỏ Thủ Công', 'Cây', '300.00', '315,00', 'Nhật', '250,000 ₫', '220.000 ₫', 'Nặng Nhọc']
+     📄 Sheet: "Lô" (34 rows)
+        Row 1: ['BẢNG CHI TIẾT CÁC LÔ DỰ ÁN 126']
+        Row 2: ['STT', 'Tên Vườn', 'Tên Cũ', 'Diện tích (ha)', 'Số cây', 'Đội', 'Phụ Trách']
+        Row 3: ['1', 'A1', 'I-A1, I-A3, I-A5', '3.30', '4,274.00', 'NT1']
+
+  📂 Đội Cơ Giới
+     ID: 1WSD8mYp0jbhqTh-c3bZo638ihDnpcVugapdC1HdHViM
+     ✅ OK — Title: "Đội Cơ Giới - 126"
+     📄 Sheet: "Công (fact)" (5967 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV']
+        Row 1: ['1', '7-02n', 'D4', 'NT2', 'NT2', '05/01/2026', 'Chạy Xe Cày', 'Nhật', '0.5', '1.0']
+        Row 2: ['2', '7-02n', 'B5', 'NT1', 'NT1', '05/01/2026', 'Chạy Xe Cày', 'Nhật', '0.5', '1.0']
+     📄 Sheet: "Tổng Hợp Công Theo Lô" (26 rows)
+        Row 1: ['Ngày Bắt Đầu', '13/08/2025', 'BẢNG TỔNG HỢP CÔNG TỪ NGÀY 13/8/2025 ĐẾN NGÀY 31/10/2025 TẠI LÔ 1A DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '31/10/2025']
+        Row 3: ['Vườn', '1A']
+     📄 Sheet: "Vật Tư (fact)" (3979 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá']
+        Row 1: ['1', '7-02n', 'Farm 126', 'Farm 126', '01/02/2026', 'Chạy Xe Cày', 'Dầu Diesel', '20', 'lit', '18,000.00']
+        Row 2: ['2', '7-02n', 'D3', 'NT2', '02/02/2026', 'Chạy Xe Cày', 'Dầu Diesel', '4', 'lit', '18,000.00']
+     📄 Sheet: "Tổng Hợp Vật Tư" (1010 rows)
+        Row 1: ['Ngày Bắt Đầu', '04/08/2025', 'BẢNG TỔNG HỢP VẬT TƯ TỪ NGÀY 4/8/2025 ĐẾN NGÀY 15/10/2025 TẠI LÔ 2A DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '15/10/2025']
+        Row 3: ['Lô', '2A']
+     📄 Sheet: "Đơn Giá Vật Tư" (125 rows)
+        Row 1: ['BẢNG ĐỊNH MỨC VẬT TƯ']
+        Row 2: ['STT', 'Tên vật tư', 'ĐVT', 'Giá thành', 'Loại Vật Tư', 'Ghi chú']
+        Row 3: ['1', 'Streptomicin (72%)', 'lít', '1,100,000.00', 'Bảo Vệ Thực Vật']
+     📄 Sheet: "Định Mức Công" (111 rows)
+        Row 1: ['1-16', 'kẢNG ĐỊNH MỨC CÔNG VIỆC']
+        Row 2: ['1-15', 'ID', 'Công Đoạn', 'Hạng mục công việc', 'ĐVT\n (theo Định mức)', 'Định mức\n (trên 1 công)', 'Định mức cũ', 'Loại Công', 'Giá Trên 1 ĐVT', 'Giá cũ']
+        Row 3: ['1-01n', 'Chăm sóc vườn', 'Làm Cỏ Thủ Công', 'Cây', '300.00', '315,00', 'Nhật', '250,000 ₫', '220.000 ₫', 'Nặng Nhọc']
+     📄 Sheet: "Lô" (34 rows)
+        Row 1: ['BẢNG CHI TIẾT CÁC LÔ DỰ ÁN 126']
+        Row 2: ['STT', 'Tên Vườn', 'Tên Cũ', 'Diện tích (ha)', 'Số cây', 'Đội', 'Phụ Trách']
+        Row 3: ['1', 'A1', 'I-A1, I-A3, I-A5', '3.30', '4,274.00', 'NT1']
+
+  📂 Đội Điện Nước
+     ID: 1by_0MyQb1pRPjTsxxE7z0BjIRzkfCOrApbVwP5_d8UE
+     ✅ OK — Title: "Đội Điện Nước - 126"
+     📄 Sheet: "Công (fact)" (5988 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV']
+        Row 1: ['1', '4-11n', 'Farm 126', 'Farm 126', 'Farm 126', '05/01/2026', 'Tổ Trưởng Tưới Nước', 'Nhật', '1.0', '1.0']
+        Row 2: ['2', '4-05n', 'A8', 'NT1', 'NT1', '05/01/2026', 'Tưới Nước', 'Nhật', '0.5', '2.2']
+     📄 Sheet: "Tổng Hợp Công Theo Lô" (26 rows)
+        Row 1: ['Ngày Bắt Đầu', '13/08/2025', 'BẢNG TỔNG HỢP CÔNG TỪ NGÀY 13/8/2025 ĐẾN NGÀY 31/10/2025 TẠI LÔ 26 DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '31/10/2025']
+        Row 3: ['Vườn', 'Farm 126']
+     📄 Sheet: "Vật Tư (fact)" (3989 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá']
+        Row 1: ['1', '4-04n', 'Farm 126', 'Farm 126', '01/02/2026', 'Kiểm Tra, Sửa Chữa Hệ Thống Tưới', 'Keo Dán', '3', 'Chai', '0.0']
+        Row 2: ['2', '4-04n', 'Farm 126', 'Farm 126', '02/02/2026', 'Kiểm Tra, Sửa Chữa Hệ Thống Tưới', 'Keo Dán', '4', 'Chai', '0.0']
+     📄 Sheet: "Tổng Hợp Vật Tư" (1010 rows)
+        Row 1: ['Ngày Bắt Đầu', '04/08/2025', 'BẢNG TỔNG HỢP VẬT TƯ TỪ NGÀY 4/8/2025 ĐẾN NGÀY 15/10/2025 TẠI LÔ 2A DỰ ÁN 126']
+        Row 2: ['Ngày Kết Thúc', '15/10/2025']
+        Row 3: ['Lô', '2A']
+     📄 Sheet: "Đơn Giá Vật Tư" (125 rows)
+        Row 1: ['BẢNG ĐỊNH MỨC VẬT TƯ']
+        Row 2: ['STT', 'Tên vật tư', 'ĐVT', 'Giá thành', 'Loại Vật Tư', 'Ghi chú']
+        Row 3: ['1', 'Streptomicin (72%)', 'lít', '1,100,000.00', 'Bảo Vệ Thực Vật']
+     📄 Sheet: "Định Mức Công" (107 rows)
+        Row 1: ['1-16', 'kẢNG ĐỊNH MỨC CÔNG VIỆC']
+        Row 2: ['1-15', 'ID', 'Công Đoạn', 'Hạng mục công việc', 'ĐVT\n (theo Định mức)', 'Định mức\n (trên 1 công)', 'Định mức cũ', 'Loại Công', 'Giá Trên 1 ĐVT', 'Giá cũ']
+        Row 3: ['1-01n', 'Chăm sóc vườn', 'Làm Cỏ Thủ Công', 'Cây', '300.00', '315,00', 'Nhật', '250,000 ₫', '220.000 ₫', 'Nặng Nhọc']
+     📄 Sheet: "Lô" (34 rows)
+        Row 1: ['BẢNG CHI TIẾT CÁC LÔ DỰ ÁN 126']
+        Row 2: ['STT', 'Tên Vườn', 'Tên Cũ', 'Diện tích (ha)', 'Số cây', 'Đội', 'Phụ Trách']
+        Row 3: ['1', 'A1', 'I-A1, I-A3, I-A5', '3.30', '4,274.00', 'NT1']
+
+  📂 Đội Thu Hoạch
+     ID: 1TYcbDTZLJjPdBSvf_Qo_rNe14myq3gUoWvXR6_U2W0s
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.
+
+============================================================
+🏠 Farm 157
+============================================================
+
+  📂 Farm 157 MASTER
+     ID: 1dA8HIOEUDtp_ip6Dg0Yz7sCF9I90KMKiycixF0jus04
+     ✅ OK — Title: "BÁO CÁO TỔNG HỢP 157"
+     📄 Sheet: "Tổng hợp công chăm sóc vườn, buồng" (256 rows)
+        Row 1: ['Ngày Bắt Đầu', '01/08/2025', 'BẢNG TỔNG HỢP CÔNG TỪ NGÀY 1/8/2025 ĐẾN NGÀY 30/9/2025 TẠI LÔ T2 DỰ ÁN 157']
+        Row 2: ['Ngày Kết Thúc', '30/09/2025']
+        Row 3: ['Vườn', 'NT1+NT2']
+     📄 Sheet: "Tổng hợp công các đội khác" (159 rows)
+        Row 1: ['Ngày Bắt Đầu', '16/09/2025', 'BẢNG TỔNG HỢP BỘ PHẬN LIÊN QUAN TỪ NGÀY 16/9/2025 ĐẾN NGÀY 30/9/2025 DỰ ÁN 157']
+        Row 2: ['Ngày Kết Thúc', '30/09/2025']
+        Row 4: ['16/09/2025', '16/09/2025', '17/09/2025', '17/09/2025', '18/09/2025', '18/09/2025', '19/09/2025', '19/09/2025', '20/09/2025', '20/09/2025']
+     📄 Sheet: "Công (fact)" (14988 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV']
+        Row 1: ['1', '4-00', 'Đội Điện nước', 'Đội Điện nước', 'Điện Nước', '16/09/2025', 'Tổ trưởng Điện nước', 'BC', '1.00', '1.00']
+        Row 2: ['2', '4-18B', '3B', 'NT1+NT2', 'Điện Nước', '16/09/2025', 'Thi công điện nước', 'BC', '0.50', '0.50']
+     📄 Sheet: "Sheet31" (38 rows)
+        Row 0: ['Thu Hoạch', 'NT2', 'NT1']
+        Row 1: ['Ngày', 'Báo cáo', 'Chấm công', 'Chênh lệch', 'Ngày', 'Báo cáo', 'Chấm công', 'Chênh lệch', 'Ngày', 'Báo cáo']
+        Row 2: ['16/01', '13', '13', '0', '16/01', '35.5', '35.5', '0', '16/01', '45']
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.
+
+  📂 Đội NT1
+     ID: 1sNjRPcDJkSoiVZNRHIeu_8VinA16KnwdwZCpLBwJ4EA
+     ✅ OK — Title: "Đội 1 - 157"
+     📄 Sheet: "Tổng hợp công chăm sóc vườn, buồng" (256 rows)
+        Row 1: ['Ngày Bắt Đầu', '30/08/2025', 'BẢNG TỔNG HỢP CÔNG TỪ NGÀY 30/8/2025 ĐẾN NGÀY 15/10/2025 TẠI LÔ T2 DỰ ÁN 157']
+        Row 2: ['Ngày Kết Thúc', '15/10/2025']
+        Row 3: ['Vườn', 'NT1+NT2']
+     📄 Sheet: "Tổng hợp công các đội khác" (20 rows)
+        Row 1: ['Ngày Bắt Đầu', '16/09/2025', 'BẢNG TỔNG HỢP BỘ PHẬN LIÊN QUAN TỪ NGÀY 16/9/2025 ĐẾN NGÀY 30/9/2025 DỰ ÁN 157']
+        Row 2: ['Ngày Kết Thúc', '30/09/2025']
+        Row 4: ['16/09/2025', '16/09/2025', '17/09/2025', '17/09/2025', '18/09/2025', '18/09/2025', '19/09/2025', '19/09/2025', '20/09/2025', '20/09/2025']
+     📄 Sheet: "Nhập công hàng ngày" (6950 rows)
+        Row 0: ['Mã CV', 'Vườn', 'Lô của đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT']
+        Row 1: ['1', '6-01', 'Farm 157', 'Farm 157', 'Farm 157', '25/01/2026', 'Tổ trưởng', 'BC', '3.00', '3.00']
+        Row 2: ['2', '1-16', '5', 'NT1+NT2', 'NT1+NT2', '25/01/2026', 'Trồng dặm', 'Nhật', '2.00', '2.00']
+     📄 Sheet: "Nhập vật tư hàng ngày" (5468 rows)
+        Row 0: ['STT', 'Mã CV', 'Lô', 'Đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT']
+        Row 1: ['1', '1-20N', '2B', 'NT1+NT2', 'NT1+NT2', '25/01/2026', 'Bón rải lấp phân tay', 'Phân Urê (bao 50kg)', '150', 'kg']
+        Row 2: ['2', '1-20N', '2B', 'NT1+NT2', 'NT1+NT2', '25/01/2026', 'Bón rải lấp phân tay', 'PHÂN KALI PHÚ MỸ (50KG/BAO)', '250', 'kg']
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.
+
+  📂 Đội NT2
+     ID: 1NQY7K6QVgHnvx0SEay-lCRqgDn7qJaY7XD290HnKI5s
+     ✅ OK — Title: "Đội 2 - 157"
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.
+
+  📂 Đội BVTV
+     ID: 12BUt2pyxomDYo71dVmbT6i_mIMv_ERMVnCb6O6r5ddw
+     ✅ OK — Title: "Đội BVTV - 157"
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.
+
+  📂 Đội Cơ Giới
+     ID: 1m1OFHE2foQ6y-pOxzusnHwokxoL3qT1jpH5r28khaLc
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.
+
+  📂 Đội Điện Nước
+     ID: 1m8t584ZNV_SfrpmzUoNEllW06nfhnwHBD-sopFZOCX8
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.
+
+  📂 Đội Thu Hoạch
+     ID: 17jUY6Ep_JreMPvphXhyzi50CX7nuvnLhIdhWkY4CHWc
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.
+
+============================================================
+🏠 Farm 195
+============================================================
+  ℹ️ Không có file Master
+
+  📂 Vườn Ươm
+     ID: 1V9ThLCFTtLKuFNeNUkBgmRKzW3MpeLnsOPnapDoAn4Y
+     ❌ Lỗi: APIError: [429]: Quota exceeded for quota metric 'Read requests' and limit 'Read requests per minute per user' of service 'sheets.googleapis.com' for consumer 'project_number:901827094873'.

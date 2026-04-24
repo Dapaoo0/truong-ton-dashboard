@@ -1,0 +1,150 @@
+
+============================================================
+📂 Farm 126 — Đội Thu Hoạch
+   ID: 1TYcbDTZLJjPdBSvf_Qo_rNe14myq3gUoWvXR6_U2W0s
+   ✅ Title: "Đội Thu Hoạch - 126"
+   📄 "Công (fact)" (6037 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT', 'Đơn Giá']
+      Row 1: ['1', '6-01k', 'D3', 'NT2', 'Thu Hoạch', '07/01/2026', 'Thu Hoạch Chuối', 'Khoán', '5.0', '169.0', 'Buồng', '7,000']
+      Row 2: ['2', '6-01k', 'C5', 'NT2', 'Thu Hoạch', '07/01/2026', 'Thu Hoạch Chuối', 'Khoán', '4.0', '107.0', 'Buồng', '7,000']
+   📄 "Tổng Hợp Công Theo Lô" (26 rows)
+   📄 "Vật Tư (fact)" (3996 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá', 'Thành Tiền', 'Công Đoạn']
+      Row 1: ['1', '0.0']
+      Row 2: ['2', '0.0']
+   📄 "Tổng Hợp Vật Tư" (1010 rows)
+   📄 "Đơn Giá Vật Tư" (125 rows)
+   📄 "Định Mức Công" (107 rows)
+   📄 "Lô" (34 rows)
+
+============================================================
+📂 Farm 157 — MASTER (full)
+   ID: 1dA8HIOEUDtp_ip6Dg0Yz7sCF9I90KMKiycixF0jus04
+   ✅ Title: "BÁO CÁO TỔNG HỢP 157"
+   📄 "Tổng hợp công chăm sóc vườn, buồng" (256 rows)
+   📄 "Tổng hợp công các đội khác" (159 rows)
+   📄 "Công (fact)" (14988 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT', 'Đơn Giá']
+      Row 1: ['1', '4-00', 'Đội Điện nước', 'Đội Điện nước', 'Điện Nước', '16/09/2025', 'Tổ trưởng Điện nước', 'BC', '1.00', '1.00', 'Công', '0']
+      Row 2: ['2', '4-18B', '3B', 'NT1+NT2', 'Điện Nước', '16/09/2025', 'Thi công điện nước', 'BC', '0.50', '0.50', 'Công', '0']
+   📄 "Sheet31" (38 rows)
+   📄 "Lô" (42 rows)
+   📄 "Định Mức Công" (177 rows)
+   📄 "Vật Tư (fact)" (8638 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá', 'Thành Tiền', 'Công Đoạn']
+      Row 1: ['25', 'NT2', 'NT1+NT2', '01/08/2025', 'BAO ĐỊNH HÌNH 65*110 (2000 CÁI /BAO)', '3000', 'Cái', '1458', '4374000']
+      Row 2: ['26', 'NT2', 'NT1+NT2', '01/08/2025', 'BAO ĐỊNH HÌNH 65*110 (2000 CÁI /BAO)', '2000', 'Cái', '1458', '2916000']
+   📄 "Đơn Giá Vật Tư" (132 rows)
+   📄 "Tổng Hợp Vật Tư" (1010 rows)
+   📄 "Readme 126 (Not Done)" (69 rows)
+
+============================================================
+📂 Farm 157 — Đội NT2
+   ID: 1NQY7K6QVgHnvx0SEay-lCRqgDn7qJaY7XD290HnKI5s
+   ✅ Title: "Đội 2 - 157"
+   📄 "Tổng hợp công chăm sóc vườn, buồng" (256 rows)
+   📄 "Tổng hợp công các đội khác" (20 rows)
+   📄 "Nhập công hàng ngày" (6951 rows) 🎯
+      Row 0: ['Mã CV', 'Vườn', 'Lô của đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT', 'Đơn Giá', 'Định Mức']
+      Row 1: ['1', '6-01', 'Farm 157', 'Farm 157', 'Farm 157', '20/01/2026', 'Tổ trưởng', 'BC', '2.00', '2.00', 'Công', '1']
+      Row 2: ['2', '6-02', 'NT3', 'NT3+NT4', 'NT3+NT4', '20/01/2026', 'Chở vật tư', 'Nhật', '1.00', '1.00', 'Công', '250,000']
+   📄 "Lô" (41 rows)
+   📄 "Định Mức Công" (185 rows)
+   📄 "Nhập vật tư hàng ngày" (5457 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn giá', 'Thành tiền']
+      Row 1: ['1', '2-03K', '10', 'NT3+NT4', 'NT3+NT4', '20/01/2026', 'Bẻ hoa', 'Giấy Báo', '4', 'kg', '28080', '112,320.0']
+      Row 2: ['2', '2-03K', '10', 'NT3+NT4', 'NT3+NT4', '20/01/2026', 'Bẻ hoa', 'Giấy Vệ Sinh', '2', 'kg', '16200', '32,400.0']
+   📄 "Tổng Hợp Vật Tư" (1010 rows)
+   📄 "Đơn Giá Vật Tư" (132 rows)
+
+============================================================
+📂 Farm 157 — Đội BVTV
+   ID: 12BUt2pyxomDYo71dVmbT6i_mIMv_ERMVnCb6O6r5ddw
+   ✅ Title: "Đội BVTV - 157"
+   📄 "Tổng hợp công chăm sóc vườn, buồng" (256 rows)
+   📄 "Tổng hợp công các đội khác" (20 rows)
+   📄 "Nhập công hàng ngày" (6951 rows) 🎯
+      Row 0: ['Mã CV', 'Vườn', 'Lô của đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT', 'Đơn Giá', 'Định Mức']
+      Row 1: ['1', '3-00', 'Farm 157', 'Farm 157', 'BVTV', '24/01/2026', 'Tổ trưởng BVTV', 'BC', '2.00', '2.00', 'Công', '1']
+      Row 2: ['2', '3-01', 'Farm 157', 'Farm 157', 'BVTV', '24/01/2026', 'Nhóm trưởng BVTV', 'Nhật', '1.00', '1.00', 'Công', '300,000']
+   📄 "Lô" (41 rows)
+   📄 "Định Mức Công" (173 rows)
+   📄 "Nhập vật tư hàng ngày" (5457 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn giá', 'Thành tiền']
+      Row 1: ['1', '3-03N', '8B', 'NT3+NT4', 'BVTV', '24/01/2026', 'Phun xe cày - Sâu', 'NP-CYRIN', '0.75', 'lit', '180000', '135,000.0']
+      Row 2: ['2', '3-03N', '8B', 'NT3+NT4', 'BVTV', '24/01/2026', 'Phun xe cày - Sâu', 'Hello  (100gr/gói)', '5', 'gói', '19000', '95,000.0']
+   📄 "Tổng Hợp Vật Tư" (1010 rows)
+   📄 "Đơn Giá Vật Tư" (139 rows)
+
+============================================================
+📂 Farm 157 — Đội Cơ Giới
+   ID: 1m1OFHE2foQ6y-pOxzusnHwokxoL3qT1jpH5r28khaLc
+   ✅ Title: "Đội Cơ Giới - 157"
+   📄 "Tổng hợp công chăm sóc vườn, buồng" (256 rows)
+   📄 "Tổng hợp công các đội khác" (20 rows)
+   📄 "Nhập công hàng ngày" (6951 rows) 🎯
+      Row 0: ['Mã CV', 'Vườn', 'Lô của đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT', 'Đơn Giá', 'Định Mức']
+      Row 1: ['1', '8-12', '12A', '12.00', 'NT3+NT4', '16/3/2025', 'Bảo trì ròng rọc', 'BC', '6.00', '0.00', 'Công', '0']
+      Row 2: ['2', '8-08', '16/3/2025', 'Xe 08', 'BC', '2.00', 'Công', '0', '1', '0', 'Cơ giới - Cơ khí']
+   📄 "Lô" (41 rows)
+   📄 "Định Mức Công" (172 rows)
+   📄 "Nhập vật tư hàng ngày" (5457 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn giá', 'Thành tiền']
+      Row 1: ['1', '6-20', '16/03/2025', 'Cắt vật tư', '4', '0.0', 'Hạng Mục Phát Sinh']
+      Row 2: ['2', '6-20', '16/03/2025', 'Cắt vật tư', 'Xăng', '30', 'lit', '20000', '600,000.0', 'Hạng Mục Phát Sinh']
+   📄 "Tổng Hợp Vật Tư" (1010 rows)
+   📄 "Đơn Giá Vật Tư" (127 rows)
+
+============================================================
+📂 Farm 157 — Đội Điện Nước
+   ID: 1m8t584ZNV_SfrpmzUoNEllW06nfhnwHBD-sopFZOCX8
+   ✅ Title: "Đội Điện Nước - 157"
+   📄 "Tổng hợp công chăm sóc vườn, buồng" (256 rows)
+   📄 "Tổng hợp công các đội khác" (20 rows)
+   📄 "Nhập công hàng ngày" (6951 rows) 🎯
+      Row 0: ['Mã CV', 'Vườn', 'Lô của đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT', 'Đơn Giá', 'Định Mức']
+      Row 1: ['1', '4-00', 'Farm 157', 'Farm 157', 'Điện Nước', '23/01/2026', 'Tổ trưởng Điện nước', 'BC', '1.00', '1.00', 'Công', '0']
+      Row 2: ['2', '4-23', '1A', 'NT1+NT2', 'Điện Nước', '23/01/2026', 'Vá ống tải', 'Nhật', '1.00', '1.00', 'Công', '250,000']
+   📄 "Lô" (41 rows)
+   📄 "Định Mức Công" (173 rows)
+   📄 "Nhập vật tư hàng ngày" (5457 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn giá', 'Thành tiền']
+      Row 1: ['1', '4-23', 'Đội Điện nước', 'Đội Điện nước', 'Đội Điện nước', '02/02/2026', 'Vá ống tải', 'Keo Dán', '1', 'Chai', '0.0']
+      Row 2: ['2', '0.0']
+   📄 "Tổng Hợp Vật Tư" (1010 rows)
+   📄 "Đơn Giá Vật Tư" (127 rows)
+
+============================================================
+📂 Farm 157 — Đội Thu Hoạch
+   ID: 17jUY6Ep_JreMPvphXhyzi50CX7nuvnLhIdhWkY4CHWc
+   ✅ Title: "Đội Thu Hoạch - 157"
+   📄 "Tổng hợp công chăm sóc vườn, buồng" (256 rows)
+   📄 "Tổng hợp công các đội khác" (20 rows)
+   📄 "Nhập công hàng ngày" (6951 rows) 🎯
+      Row 0: ['Mã CV', 'Vườn', 'Lô của đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT', 'Đơn Giá', 'Định Mức']
+      Row 1: ['1', '5-02KG', '4', 'NT1+NT2', 'NT1+NT2', '21/01/2026', 'Thu hoạch bằng xe cày', 'Khoán', '0.50', '10.00', 'Buồng', '6,700']
+      Row 2: ['2', '5-02KG', '9', 'NT3+NT4', 'NT3+NT4', '21/01/2026', 'Thu hoạch bằng xe cày', 'Khoán', '0.50', '20.00', 'Buồng', '6,700']
+   📄 "Lô" (41 rows)
+   📄 "Định Mức Công" (172 rows)
+   📄 "Nhập vật tư hàng ngày" (5457 rows) 🎯
+      Row 0: ['STT', 'Mã CV', 'Lô', 'Đội', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn giá', 'Thành tiền']
+      Row 1: ['1', '6-02', 'Farm 157', 'Farm 157', 'Farm 157', '21/01/2026', 'Chở vật tư', 'Xăng', '2.5', 'lit', '20000', '50,000.0']
+      Row 2: ['2', '2-06N', '12A', 'NT3+NT4', 'NT3+NT4', '21/01/2026', 'Bao buồng', 'Bao Chống Nắng', '10', 'cái', '2052', '20,520.0']
+   📄 "Tổng Hợp Vật Tư" (1010 rows)
+   📄 "Đơn Giá Vật Tư" (127 rows)
+
+============================================================
+📂 Farm 195 — Vườn Ươm
+   ID: 1V9ThLCFTtLKuFNeNUkBgmRKzW3MpeLnsOPnapDoAn4Y
+   ✅ Title: "Vườn Ươm - 195"
+   📄 "Công (fact)" (5132 rows) 🎯
+      Row 0: ['Mã CV', 'Lô', 'Lô 2', 'Đội Thực Hiện', 'Ngày', 'Hạng mục công việc', 'Loại công', 'Số Công', 'KLCV', 'ĐVT', 'Đơn Giá', 'Định Mức']
+      Row 1: ['5-16n', 'Vườn Ươm', 'Vườn Ươm', 'Vườn Ươm', '24/12/2025', 'Phát Sinh Vườn Ươm', 'Nhật', '5.0', '5.0', 'Công', '250,000.0', '1']
+      Row 2: ['7-04n', 'Farm 195', 'Farm 195', 'Farm 195', '24/12/2025', 'Sửa Chửa Bảo Trì', 'Nhật', '1.0', '1.0', 'Công', '300,000.0', '1']
+   📄 "Vật Tư (fact)" (3996 rows) 🎯
+      Row 0: ['Mã CV', 'Lô', 'Lô 2', 'Ngày', 'Hạng mục công việc', 'Vật Tư', 'SL', 'ĐVT', 'Đơn Giá', 'Thành Tiền', 'Công Đoạn', 'Loại Vật Tư']
+      Row 1: ['5-16n', 'Vườn Ươm', 'Vườn Ươm', '16/01/2026', 'Phát Sinh Vườn Ươm', 'Kẽm', '80', 'kg', '0.0', 'Vườn Ươm', 'Vật Tư Tiêu Hao']
+      Row 2: ['5-10n', 'Vườn Ươm', 'Vườn Ươm', '16/01/2026', 'Phát Sinh Khác', 'Lưới đen', '400', 'm', '0.0', 'Hạng Mục Phát Sinh', 'Vật Tư Tiêu Hao']
+   📄 "Đơn Giá Vật Tư" (127 rows)
+   📄 "Định Mức Công" (149 rows)
+   📄 "Lô" (35 rows)

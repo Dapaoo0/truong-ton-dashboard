@@ -85,7 +85,7 @@ def load_dm(farm_ids, s, e, sel_dois, sel_los, include_ht):
     if not include_ht: conds.append("nk.is_ho_tro = FALSE")
     return query(f"""
         SELECT f.farm_code, l.lo_code, d.doi_code,
-               cv.ma_cv, cv.ten_cong_viec,
+               cv.ten_cong_viec,
                nk.ngay,
                nk.so_cong, nk.klcv, nk.dinh_muc,
                CASE WHEN nk.so_cong > 0 THEN nk.klcv / nk.so_cong ELSE NULL END as ns_thuc,
@@ -340,7 +340,7 @@ chart_or_table(fig_hm, hm_table, key="heatmap_cv")
 # BẢNG CHI TIẾT THEO CÔNG VIỆC
 # ─────────────────────────────────────────────
 with st.expander("📋 Bảng tổng hợp theo Công việc"):
-    by_cv = df.groupby(["ma_cv","ten_cong_viec"]).agg(
+    by_cv = df.groupby(["ten_cong_viec"]).agg(
         so_luot=("ti_le","count"),
         avg_tl=("ti_le","mean"),
         min_tl=("ti_le","min"),
@@ -354,7 +354,7 @@ with st.expander("📋 Bảng tổng hợp theo Công việc"):
     by_cv["tong_cong"] = by_cv["tong_cong"].round(1)
 
     disp = by_cv.rename(columns={
-        "ma_cv":"Mã", "ten_cong_viec":"Công việc",
+        "ten_cong_viec":"Công việc",
         "so_luot":"Lượt", "avg_tl":"TB %", "min_tl":"Min %",
         "max_tl":"Max %", "med_tl":"Trung vị %", "tong_cong":"Tổng công"
     })
