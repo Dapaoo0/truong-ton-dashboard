@@ -130,3 +130,4 @@ dim_farm ──── dim_lo ◄──── base_lots ──── stage_logs
 | 2026-03-26 | Tạo 6 indexes thiếu trên FK columns của App tables |
 | 2026-03-26 | Xóa 8 indexes không dùng (`dim_doi`, `dim_vat_tu`, `fact_dtbd`, `fact_195_tong`) |
 | 2026-03-26 | Fix `search_path` cho `fn_auto_map_dim_lo` và `update_lot_inventory` |
+| 2026-05-05 | Đánh dấu lô "11" (lo_id=46) `is_active = false`. Lô "11" = 11A + 11B (5.14 ha), giữ lại 415 records lịch sử trong `fact_nhat_ky_san_xuat`. Tổng DT lô Farm 157 chính xác = 125.83 ha (24 lô active) |
